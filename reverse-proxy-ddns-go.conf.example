@@ -1,0 +1,36 @@
+# nginxWebUI reverse-proxy example for ddns-go
+# Copy this server block into a new nginxWebUI "server" (HTTP), then enable HTTPS
+# with your own certificate. nginxWebUI runs in bridge mode in dockge-compose.yaml,
+# so ddns-go (network_mode: host) is reachable via the host gateway alias.
+
+server {
+    listen 80;
+    server_name ddns.example.com;
+
+    # Keep the proxy body size generous enough for ddns-go config saves.
+    client_max_body_size 2m;
+
+    location / {
+        proxy_pass http://host.docker.internal:9876;
+        proxy_http_version 1.1;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Do NOT inject a fake X-Forwarded-For: ddns-go only logs it and still
+        # trusts the real socket source for NotAllowWanAccess.
+        proxy_connect_timeout 10s;
+        proxy_read_timeout 60s;
+    }
+}
+
+# Notes:
+# - If nginxWebUI itself runs with network_mode: host, use
+#   proxy_pass http://127.0.0.1:9876; instead.
+# - Put this behind HTTPS + Basic Auth or nginxWebUI login before exposing
+#   it publicly. ddns-go's own NotAllowWanAccess sees the gateway/loopback as
+#   private, so it will consider the proxy request local.
+# - If you need a path prefix (e.g. /ddns/), leave ddns-go at root; its
+#   templates use relative "./" URLs and do not support a sub-path cleanly.

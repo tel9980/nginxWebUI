@@ -275,6 +275,55 @@ function delMany() {
 }
 
 
+function revokeToken(id) {
+	if (!confirm("Revoke API token for this admin?")) {
+		return;
+	}
+	$.ajax({
+		type: 'POST',
+		url: ctx + '/adminPage/admin/revokeToken',
+		data: {
+			id: id
+		},
+		dataType: 'json',
+		success: function(data) {
+			if (data.success) {
+				layer.msg("API token revoked");
+			} else {
+				layer.msg(data.msg);
+			}
+		},
+		error: function() {
+			layer.alert(commonStr.errorInfo);
+		}
+	});
+}
+
+function revokeCredit(id) {
+	if (!confirm("Revoke all remote-management keys for this admin?")) {
+		return;
+	}
+	$.ajax({
+		type: 'POST',
+		url: ctx + '/adminPage/admin/revokeCredit',
+		data: {
+			id: id
+		},
+		dataType: 'json',
+		success: function(data) {
+			if (data.success) {
+				layer.msg("Remote keys revoked");
+			} else {
+				layer.msg(data.msg);
+			}
+		},
+		error: function() {
+			layer.alert(commonStr.errorInfo);
+		}
+	});
+}
+
+
 function downApk() {
 	layer.open({
 		type: 1,

@@ -24,6 +24,24 @@ public final class AppSecurityUtil {
 		return Solon.cfg().getBool("project.allowInAppUpdate", false);
 	}
 
+	public static boolean allowVersionCheck() {
+		return allowInAppUpdate();
+	}
+
+	public static long apiTokenTtlMs() {
+		long ttl = Solon.cfg().getLong("project.apiTokenTtlMinutes", 60);
+		return ttl > 0 ? ttl * 60L * 1000L : 60L * 60L * 1000L;
+	}
+
+	public static boolean creditKeyEnabled() {
+		return Solon.cfg().getBool("project.creditKeyEnabled", true);
+	}
+
+	public static long creditKeyTtlMs() {
+		long ttl = Solon.cfg().getLong("project.creditKeyTtlMinutes", 0);
+		return ttl > 0 ? ttl * 60L * 1000L : 0L;
+	}
+
 	public static boolean csrfEnabled() {
 		return Solon.cfg().getBool("project.csrfProtection", true);
 	}

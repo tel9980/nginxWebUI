@@ -11,6 +11,45 @@ public class Credit extends BaseModel {
 	String key;
 
 	String adminId;
+
+	/**
+	 * 远程管理凭证是否已撤销
+	 */
+	Boolean revoked;
+
+	/**
+	 * 过期时间戳，0 表示永不过期
+	 */
+	Long expiresAt;
+
+	/**
+	 * 最近使用时间
+	 */
+	Long lastUsedTime;
+
+	public Boolean getRevoked() {
+		return revoked;
+	}
+
+	public void setRevoked(Boolean revoked) {
+		this.revoked = revoked;
+	}
+
+	public Long getExpiresAt() {
+		return expiresAt;
+	}
+
+	public void setExpiresAt(Long expiresAt) {
+		this.expiresAt = expiresAt;
+	}
+
+	public Long getLastUsedTime() {
+		return lastUsedTime;
+	}
+
+	public void setLastUsedTime(Long lastUsedTime) {
+		this.lastUsedTime = lastUsedTime;
+	}
 	
 	public String getAdminId() {
 		return adminId;

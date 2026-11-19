@@ -16,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.cym.model.Version;
+import com.cym.utils.AppSecurityUtil;
 import com.cym.utils.SystemTool;
 
 import cn.hutool.core.util.StrUtil;
@@ -41,6 +42,9 @@ public class VersionConfig {
 	}
 
 	public void checkVersion() {
+		if (!AppSecurityUtil.allowVersionCheck()) {
+			return;
+		}
 		// 获取服务器最新版本
 		try {
 			String json = HttpUtil.get("https://www.nginxwebui.cn/download/version.json", 1000);

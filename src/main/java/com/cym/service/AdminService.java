@@ -12,6 +12,7 @@ import com.cym.model.Credit;
 import com.cym.sqlhelper.bean.Page;
 import com.cym.sqlhelper.utils.ConditionAndWrapper;
 import com.cym.sqlhelper.utils.SqlHelper;
+import com.cym.utils.AppSecurityUtil;
 import com.cym.utils.AuthUtils;
 import com.cym.utils.EncodePassUtils;
 
@@ -23,6 +24,8 @@ public class AdminService {
 	SqlHelper sqlHelper;
 	@Inject
 	AuthUtils authUtils;
+	@Inject
+	CreditService creditService;
 
 	public Admin login(String name, String pass) {
 		Admin admin = sqlHelper.findOneByQuery(new ConditionAndWrapper().eq(Admin::getName, name).eq(Admin::getPass, EncodePassUtils.encode(pass)), Admin.class);
@@ -57,10 +60,18 @@ public class AdminService {
 		Admin admin = new Admin();
 		admin.setId(id);
 		admin.setToken(token);
-		admin.setTokenTimeout(System.currentTimeMillis() + 24 * 60 * 60 * 1000l); 
+		admin.setTokenTimeout(System.currentTimeMillis() + AppSecurityUtil.apiTokenTtlMs());
 		sqlHelper.updateById(admin);
 
 		return admin;
+	}
+
+	public void revokeToken(String id) {
+		Admin admin = new Admin();
+		admin.setId(id);
+		admin.setToken("");
+		admin.setTokenTimeout(0L);
+		sqlHelper.updateById(admin);
 	}
 
 	public Admin getByToken(String token) {
@@ -69,13 +80,17 @@ public class AdminService {
 	}
 
 	public Admin getByCreditKey(String creditKey) {
-
-		Credit credit = sqlHelper.findOneByQuery(new ConditionAndWrapper().eq(Credit::getKey, creditKey), Credit.class);
+		Credit credit = creditService.getValid(creditKey);
 		if (credit != null) {
 			Admin admin = sqlHelper.findById(credit.getAdminId(), Admin.class);
 			return admin;
 		}
 		return null;
+	}
+
+	public void revokeCredentials(String adminId) {
+		revokeToken(adminId);
+		creditService.revoke(adminId);
 	}
 
 	public List<String> getGroupIds(String adminId) {

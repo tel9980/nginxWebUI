@@ -14,6 +14,14 @@ project:
   filesystemRoot:
   # In-app self-update downloads and replaces the running jar. Keep it disabled in containers.
   allowInAppUpdate: false
+  # CSRF token check for state-changing adminPage requests.
+  csrfProtection: true
+  # API token lifetime in minutes. Tokens are issued by /token/getToken.
+  apiTokenTtlMinutes: 60
+  # Remote-management creditKey is a long-lived credential; disable it entirely if unused.
+  creditKeyEnabled: true
+  # creditKey lifetime in minutes; 0 means no expiry (legacy behavior).
+  creditKeyTtlMinutes: 0
 solon:
   app:
     name: nginxWebUI

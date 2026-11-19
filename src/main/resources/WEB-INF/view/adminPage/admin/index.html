@@ -92,6 +92,14 @@
 								<div class="layui-inline">
 									<button type="button" class="layui-btn layui-btn-danger layui-btn-sm" onclick="del('${admin.id}')">${commonStr.del}</button>
 								</div>
+
+								<div class="layui-inline">
+									<button type="button" class="layui-btn layui-btn-xs" onclick="revokeToken('${admin.id}')">Revoke API</button>
+								</div>
+
+								<div class="layui-inline">
+									<button type="button" class="layui-btn layui-btn-xs" onclick="revokeCredit('${admin.id}')">Revoke Remote</button>
+								</div>
 							</td>
 						</tr>
 						</#list>

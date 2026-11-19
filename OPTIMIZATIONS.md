@@ -68,3 +68,27 @@ The image defaults to the optimized flags. Bare-metal users can omit the new fla
 ## Security note
 
 nginxWebUI can generate nginx config and execute privileged nginx/acme operations. Treat it as a high-privilege admin tool: keep it off the public Internet, use a reverse proxy with authentication/TLS, and back up the persisted data directory.
+
+## Round 3 hardening — credentials, offline-by-default, ddns-go auth
+
+### nginxWebUI
+- Version check is now disabled unless `project.allowInAppUpdate=true`; with the default image config there are no external network calls to `nginxwebui.cn` from startup or the daily schedule.
+- API tokens now honor a configurable lifetime (`project.apiTokenTtlMinutes`, default 60 minutes) instead of a fixed 24 hours.
+- creditKey (remote-management credential) now supports `project.creditKeyEnabled` and `project.creditKeyTtlMinutes` (0 = legacy never-expire). Revoked/expired keys are rejected, and last-used time is tracked.
+- Added "Revoke API" / "Revoke Remote" buttons on the admin list; changing a password now also revokes that admin's API token and all remote keys.
+- Added `reverse-proxy-ddns-go.conf.example` — a ready-to-copy server block that proxies ddns-go through nginxWebUI via `host.docker.internal:9876`.
+
+### ddns-go (optimized fork)
+- Login is now rate-limited per client IP (5 failures → 30-minute lock), replacing the global counter; the limiter keys on `RemoteAddr` and ignores spoofable `X-Forwarded-For`/`X-Real-IP`.
+- Added CSRF tokens: the login page and authenticated pages issue a `csrf_token` cookie, and all `POST`/`PUT`/`DELETE`/`PATCH` requests must echo it in the `X-CSRF-Token` header. `static/utils.js` sends it automatically.
+- Initial setup no longer trusts the `Referer` header to decide public exposure: new installs default to `NotAllowWanAccess=true` (relax manually if you intentionally expose the UI).
+- The optimized GHCR workflow now runs `go test ./...` before building.
+
+### CI
+- Both workflows use current action majors: `actions/checkout@v7`, `actions/setup-java@v5` / `actions/setup-go@v7`, Docker actions `@v4`–`@v6`, `docker/metadata-action@v5`.
+
+### Config flags (all in `app.yml`, overridable via `BOOT_OPTIONS`)
+- `project.allowInAppUpdate` (default `false`) — also gates version check.
+- `project.csrfProtection` (default `true`).
+- `project.apiTokenTtlMinutes` (default `60`).
+- `project.creditKeyEnabled` (default `true`), `project.creditKeyTtlMinutes` (default `0` = no expiry).

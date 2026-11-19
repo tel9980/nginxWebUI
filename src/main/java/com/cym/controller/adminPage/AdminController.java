@@ -20,6 +20,7 @@ import com.cym.ext.Tree;
 import com.cym.model.Admin;
 import com.cym.model.Group;
 import com.cym.service.AdminService;
+import com.cym.service.CreditService;
 import com.cym.service.GroupService;
 import com.cym.service.SettingService;
 import com.cym.sqlhelper.bean.Page;
@@ -42,6 +43,8 @@ public class AdminController extends BaseController {
 	Logger logger = LoggerFactory.getLogger(this.getClass());
 	@Inject
 	AdminService adminService;
+	@Inject
+	CreditService creditService;
 	@Inject
 	SettingService settingService;
 	@Inject
@@ -96,7 +99,26 @@ public class AdminController extends BaseController {
 		admin.setAuth(auth);
 
 		adminService.changePassOver(admin);
+		adminService.revokeCredentials(id);
 
+		return renderSuccess();
+	}
+
+	@Mapping("revokeToken")
+	public JsonResult revokeToken(String id) {
+		if (StrUtil.isEmpty(id)) {
+			return renderError();
+		}
+		adminService.revokeToken(id);
+		return renderSuccess();
+	}
+
+	@Mapping("revokeCredit")
+	public JsonResult revokeCredit(String id) {
+		if (StrUtil.isEmpty(id)) {
+			return renderError();
+		}
+		creditService.revoke(id);
 		return renderSuccess();
 	}
 
