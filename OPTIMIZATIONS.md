@@ -38,11 +38,19 @@ This fork optimizes nginxWebUI 4.4.2 for personal/Dockge deployments.
 
 ## Deploy with Dockge
 
-1. Create a stack from `dockge-compose.yaml`.
-2. The first run creates `./data` next to the compose file; keep that directory for backups.
+1. Create a stack from `dockge-compose.yaml`. It starts both `nginxwebui` and the optimized `ddns-go` image in one Dockge stack.
+2. The first run creates `./data` (nginxWebUI) and `./ddns-go-config` (ddns-go) next to the compose file; keep both directories for backups.
 3. Open `http://<host>:8080` from the host itself or through a reverse proxy; the compose binds only `127.0.0.1:8080` by default.
-4. Set a strong admin password; do not put `init.admin`/`init.pass` secrets in compose.
-5. If the in-container nginx should serve host ports 80/443, uncomment those port mappings. If you manage the host's nginx, switch to `network_mode: host` (and keep credentials protected).
+4. ddns-go's Web UI listens on port 9876. Because it uses `network_mode: host`, its "block public access" protection sees the real client address. Keep that option enabled unless you deliberately put it behind nginxWebUI with TLS and Basic Auth.
+5. To expose ddns-go through nginxWebUI's HTTPS entry, create a reverse-proxy server in nginxWebUI pointing to `http://host.docker.internal:9876` (the compose maps `host.docker.internal` to the host gateway). If nginxWebUI itself uses `network_mode: host`, use `http://127.0.0.1:9876` instead. Add these headers to that server's config:
+   ```nginx
+   proxy_set_header Host $host;
+   proxy_set_header X-Real-IP $remote_addr;
+   proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+   ```
+   If you leave ddns-go's `NotAllowWanAccess` enabled, nginx's proxy request arrives from the host gateway address or loopback (both private), so it is considered local. Do not forward spoofed `X-Forwarded-For` values to ddns-go; it only logs those headers and still trusts the actual socket source.
+6. Set a strong admin password; do not put `init.admin`/`init.pass` secrets in compose.
+7. If the in-container nginx should serve host ports 80/443, uncomment those port mappings. If you manage the host's nginx, switch to `network_mode: host` (and keep credentials protected).
 
 ## Build from source
 

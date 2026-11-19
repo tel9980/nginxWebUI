@@ -14,6 +14,9 @@ services:
       BOOT_OPTIONS: "--project.containerSafe=true --project.filesystemRoot=/home/nginxWebUI/ --project.home=/home/nginxWebUI/"
     volumes:
       - ./data:/home/nginxWebUI
+    # Lets the in-container nginx reach ddns-go on the host network.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     tmpfs:
       - /tmp:rw,noexec,nosuid,size=64m
     security_opt:
@@ -40,6 +43,44 @@ services:
         limits:
           memory: 512M
           cpus: "1.0"
+
+    depends_on:
+      - ddns-go
+
+# Copy the optimized ddns-go image into the same Dockge stack.
+# network_mode: host is used because ddns-go detects the host's real public
+# IPv6/global addresses from the network namespace.
+  ddns-go:
+    image: ghcr.io/tel9980/ddns-go:optimized
+    container_name: ddns-go
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      TZ: Asia/Shanghai
+    volumes:
+      - ./ddns-go-config:/config
+    command: ["-l", ":9876", "-f", "300", "-c", "/config/.ddns_go_config.yaml"]
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      - SETUID
+      - SETGID
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+    pids_limit: 64
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9876/login >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: "0.5"
 
 # Host-network variant (manage the host's nginx): replace ports above with:
 #   network_mode: host
