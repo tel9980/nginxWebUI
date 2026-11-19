@@ -1,0 +1,29 @@
+services:
+  nginxwebui:
+    image: ghcr.io/tel9980/nginxwebui:4.4.2-optimized
+    container_name: nginxwebui
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080"
+      # Enable only when the in-container nginx must serve host traffic:
+      # - "80:80"
+      # - "443:443"
+    environment:
+      TZ: Asia/Shanghai
+      JAVA_OPTS: "-Xms64m -Xmx256m"
+      BOOT_OPTIONS: "--project.containerSafe=true --project.filesystemRoot=/home/nginxWebUI/ --project.home=/home/nginxWebUI/"
+    volumes:
+      - ./data:/home/nginxWebUI
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/ >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+# Host-network variant (manage the host's nginx): replace ports above with:
+#   network_mode: host

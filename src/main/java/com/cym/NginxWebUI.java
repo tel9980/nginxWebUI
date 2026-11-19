@@ -1,10 +1,6 @@
 package com.cym;
 
 import java.io.File;
-import java.lang.management.ManagementFactory;
-import java.lang.management.RuntimeMXBean;
-import java.util.ArrayList;
-import java.util.List;
 
 import org.noear.solon.Solon;
 import org.noear.solon.annotation.SolonMain;
@@ -12,12 +8,8 @@ import org.noear.solon.scheduling.annotation.EnableScheduling;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.cym.utils.ContainerSafeProcessUtils;
 import com.cym.utils.JarUtil;
-import com.cym.utils.SystemTool;
-
-import cn.hutool.core.io.FileUtil;
-import cn.hutool.core.thread.ThreadUtil;
-import cn.hutool.core.util.RuntimeUtil;
 
 @EnableScheduling
 @SolonMain
@@ -26,7 +18,6 @@ public class NginxWebUI {
 
 	public static void main(String[] args) {
 		boolean findPass = false;
-		
 		if (args != null) {
 			for (String arg : args) {
 				if (arg.equals("--project.findPass=true")) {
@@ -34,75 +25,87 @@ public class NginxWebUI {
 				}
 			}
 		}
-		
-		try {
-			if (!findPass) {
-				// 尝试杀掉旧版本
-				killSelf(args);
 
-				// 删掉多余的jar
+		if (!findPass) {
+			String jarPath = JarUtil.getCurrentFilePath();
+			if (ContainerSafeProcessUtils.isContainerSafe(args)) {
+				// Container-optimized mode: never scan or kill unrelated JVMs.
+				ContainerSafeProcessUtils.stopPreviousOwnJar(jarPath);
+				ContainerSafeProcessUtils.removeStaleJars(jarPath);
+				ContainerSafeProcessUtils.writeOwnPid(jarPath);
+			} else {
+				// Legacy compatibility for bare-metal installs that rely on the
+				// old broad process scan. Not used by the optimized image.
+				killSelf(args);
 				removeJar();
 			}
-		} catch (Exception e) {
-			logger.error(e.getMessage(), e);
 		}
 
 		Solon.start(NginxWebUI.class, args);
 	}
 
+	/** Legacy process cleanup kept for non-container deployments. */
 	public static void killSelf(String[] args) {
-		RuntimeMXBean runtimeMXBean = ManagementFactory.getRuntimeMXBean();
-		String myPid = runtimeMXBean.getName().split("@")[0];
-
-		List<String> pids = getProcessId();
-		for (String pid : pids) {
+		if (ContainerSafeProcessUtils.isContainerSafe(args)) {
+			return;
+		}
+		String myPid = java.lang.management.ManagementFactory.getRuntimeMXBean().getName().split("@")[0];
+		for (String pid : getProcessId()) {
 			if (!pid.equals(myPid)) {
 				logger.info("杀掉旧进程:" + pid);
-				if (SystemTool.isWindows()) {
-					RuntimeUtil.exec("taskkill /F /PID " + pid);
-					ThreadUtil.safeSleep(1000); // win下等待1秒,否则文件不会被释放
-				} else if (SystemTool.isLinux()) {
-					RuntimeUtil.exec("kill -9 " + pid);
+				try {
+					if (com.cym.utils.SystemTool.isWindows()) {
+						new ProcessBuilder("taskkill", "/F", "/PID", pid).start().waitFor();
+					} else if (com.cym.utils.SystemTool.isLinux()) {
+						new ProcessBuilder("/bin/sh", "-c", "kill " + pid).start().waitFor();
+					}
+				} catch (Exception e) {
+					logger.warn("failed to stop legacy process {}", pid, e);
 				}
 			}
 		}
-
 	}
 
-	private static List<String> getProcessId() {
-		List<String> pids = new ArrayList<>();
-
-		if (SystemTool.isWindows()) {
-			List<String> list = RuntimeUtil.execForLines("wmic process where \"CommandLine like '%nginxWebUI%'\" get ProcessId,CommandLine");
-
-			for (String line : list) {
-				if (line.contains(".jar")) {
-					String[] lines = line.split("\\s+");
-					pids.add(lines[lines.length - 1]);
-				}
+	private static java.util.List<String> getProcessId() {
+		java.util.List<String> pids = new java.util.ArrayList<>();
+		try {
+			java.util.List<String> list;
+			if (com.cym.utils.SystemTool.isWindows()) {
+				list = cn.hutool.core.util.RuntimeUtil.execForLines(
+						"wmic process where \"CommandLine like '%nginxWebUI%'\" get ProcessId,CommandLine");
+			} else {
+				list = cn.hutool.core.util.RuntimeUtil.execForLines("/bin/sh", "-c", "ps -ef | grep nginxWebUI");
 			}
-		} else {
-			List<String> list = RuntimeUtil.execForLines("/bin/sh", "-c", "ps -ef | grep nginxWebUI");
-
 			for (String line : list) {
 				if (line.contains(".jar") && !line.contains("nginxWebUI-Website")) {
-					String[] lines = line.split("\\s+");
-					pids.add(lines[1]);
+					String[] parts = line.trim().split("\\s+");
+					String pid = com.cym.utils.SystemTool.isWindows() ? parts[parts.length - 1] : parts[1];
+					if (pid != null && pid.matches("\\d+")) {
+						pids.add(pid);
+					}
 				}
 			}
+		} catch (Exception e) {
+			logger.warn("failed to enumerate legacy processes", e);
 		}
-
 		return pids;
 	}
 
 	private static void removeJar() {
-		File[] list = new File(JarUtil.getCurrentFilePath()).getParentFile().listFiles();
+		String jarPath = JarUtil.getCurrentFilePath();
+		if (jarPath == null || jarPath.trim().isEmpty()) {
+			return;
+		}
+		File[] list = new File(jarPath).getAbsoluteFile().getParentFile().listFiles();
+		if (list == null) {
+			return;
+		}
 		for (File file : list) {
-			if (file.getName().startsWith("nginxWebUI") && file.getName().endsWith(".jar") && !file.getPath().equals(JarUtil.getCurrentFilePath())) {
-				FileUtil.del(file);
+			if (file.getName().startsWith("nginxWebUI") && file.getName().endsWith(".jar")
+					&& !file.getAbsolutePath().equals(new File(jarPath).getAbsolutePath())) {
 				logger.info("删除旧文件:" + file);
+				cn.hutool.core.io.FileUtil.del(file);
 			}
 		}
 	}
-
 }

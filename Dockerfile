@@ -1,51 +1,42 @@
-FROM alpine:3.24
+FROM alpine:3.21
+
+LABEL org.opencontainers.image.title="nginxWebUI (optimized)" \
+      org.opencontainers.image.description="Dockge-friendly nginxWebUI with safe startup, visible logs and slim nginx modules" \
+      org.opencontainers.image.source="https://github.com/tel9980/nginxWebUI"
+
 ENV LANG=zh_CN.UTF-8 \
     TZ=Asia/Shanghai \
-    PS1="\u@\h:\w \$ "
-RUN apk add --update --no-cache \
-    nginx \
-    nginx-mod-stream \
-    nginx-mod-stream-geoip \
-    nginx-mod-stream-geoip2 \
-    nginx-mod-stream-js \
-    nginx-mod-stream-keyval \
-    nginx-mod-http-headers-more \
-    nginx-mod-http-js \
-    nginx-mod-http-keyval \
-    nginx-mod-http-lua \
-    nginx-mod-http-brotli \
-    nginx-mod-rtmp \
-    nginx-mod-mail \
-    nginx-mod-http-geoip \
-    nginx-mod-http-geoip2 \
-    nginx-mod-http-zip \
-    nginx-mod-http-zstd \
-    nginx-mod-http-perl \
-    nginx-mod-http-upload \
-    nginx-mod-http-upload-progress \
-    nginx-mod-http-upstream-fair \
-    nginx-mod-http-echo \
-    nginx-mod-http-cache-purge \
-    nginx-mod-dynamic-upstream \
-    nginx-mod-dynamic-healthcheck \
-    openjdk8-jre \
-    net-tools \
-    curl \
-    wget \
-    ttf-dejavu \
-    fontconfig \
-    tzdata \
-    logrotate \
-    tini \
-    acme.sh \
-    && fc-cache -f -v \
-    && ln -sf /usr/share/zoneinfo/${TZ} /etc/localtime \
+    PS1="\u@\h:\w \$ " \
+    JAVA_OPTS="-Xms64m -Xmx256m" \
+    BOOT_OPTIONS="--project.containerSafe=true --project.filesystemRoot=/home/nginxWebUI/ --project.home=/home/nginxWebUI/"
+
+RUN apk add --no-cache \
+      nginx \
+      nginx-mod-stream \
+      nginx-mod-http-headers-more \
+      nginx-mod-http-lua \
+      openjdk17-jre-headless \
+      curl \
+      tzdata \
+      fontconfig \
+      ttf-dejavu \
+      tini \
+      su-exec \
+    && fc-cache -f \
+    && ln -snf /usr/share/zoneinfo/${TZ} /etc/localtime \
     && echo "${TZ}" > /etc/timezone \
-	&& nginx -v \
-	&& nginx -V \
-    && rm -rf /var/cache/apk/* /tmp/*
+    && mkdir -p /home/nginxWebUI/log \
+    && chown -R nobody:nogroup /home/nginxWebUI
+
 COPY target/nginxWebUI-*.jar /home/nginxWebUI.jar
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN ["chmod", "+x", "/usr/local/bin/entrypoint.sh"]
-# VOLUME ["/home/nginxWebUI"]
-ENTRYPOINT ["tini", "entrypoint.sh"]
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+WORKDIR /home
+VOLUME ["/home/nginxWebUI"]
+EXPOSE 8080 80 443
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 \
+  CMD curl -fsS http://127.0.0.1:8080/ >/dev/null 2>&1 || exit 1
+
+ENTRYPOINT ["tini", "--", "/usr/local/bin/entrypoint.sh"]

@@ -3,8 +3,6 @@ package com.cym.config;
 import java.util.HashMap;
 import java.util.Map;
 
-import javax.script.SimpleBindings;
-
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.script.ScriptUtil;
 

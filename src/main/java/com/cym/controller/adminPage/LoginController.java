@@ -4,7 +4,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import javax.swing.JPanel;
 
 import com.cym.config.ViewConfig;
 import org.noear.solon.annotation.Controller;

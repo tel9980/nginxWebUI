@@ -144,11 +144,13 @@ public class InitConfig {
 			settingService.set("nginxPath", nginxPath);
 		}
 
-		// 释放acme全新包
+		// 释放acme包：仅在缺失时解压，避免每次启动覆盖用户证书/账户数据
 		String acmeShDir = homeConfig.home + ".acme.sh" + File.separator;
-		ClassPathResource resource = new ClassPathResource("acme.zip");
-		InputStream inputStream = resource.getStream();
-		ZipUtil.unzip(inputStream, new File(acmeShDir), CharsetUtil.defaultCharset());
+		if (!FileUtil.exist(acmeShDir + "acme.sh")) {
+			ClassPathResource resource = new ClassPathResource("acme.zip");
+			InputStream inputStream = resource.getStream();
+			ZipUtil.unzip(inputStream, new File(acmeShDir), CharsetUtil.defaultCharset());
+		}
 
 		// 全局黑白名单
 		if (settingService.get("denyAllow") == null) {
@@ -181,12 +183,17 @@ public class InitConfig {
 					String nginxDir = settingService.get("nginxDir");
 					String nginxPath = settingService.get("nginxPath");
 					if (StrUtil.isNotEmpty(nginxExe) && StrUtil.isNotEmpty(nginxPath)) {
-						runCmd("pkill -9 nginx");
-						String cmd = nginxExe + " -c " + nginxPath;
-						if (StrUtil.isNotEmpty(nginxDir)) {
-							cmd += " -p " + nginxDir;
+						// Never kill nginx processes outside this container/PID namespace.
+						// The generated config is written to disk and applied by the user
+						// through the UI's explicit reload action.
+						String autoStart = System.getenv("NGINXWEBUI_AUTOSTART_NGINX");
+						if (!"false".equalsIgnoreCase(autoStart)) {
+							String cmd = nginxExe + " -c " + nginxPath;
+							if (StrUtil.isNotEmpty(nginxDir)) {
+								cmd += " -p " + nginxDir;
+							}
+							runCmd(cmd);
 						}
-						runCmd(cmd);
 					}
 				}
 
