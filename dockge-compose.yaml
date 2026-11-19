@@ -58,7 +58,7 @@ services:
     environment:
       TZ: Asia/Shanghai
     volumes:
-      - ./ddns-go-config:/config
+      - ddns-go-config:/config
     command: ["-l", ":9876", "-f", "300", "-c", "/config/.ddns_go_config.yaml"]
     cap_drop:
       - ALL
@@ -81,6 +81,9 @@ services:
         limits:
           memory: 128M
           cpus: "0.5"
+
+volumes:
+  ddns-go-config:
 
 # Host-network variant (manage the host's nginx): replace ports above with:
 #   network_mode: host
