@@ -3,6 +3,9 @@ package com.cym.service;
 import java.io.File;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -991,56 +994,76 @@ public class ConfService {
 		return StrUtil.join("\n", strs);
 	}
 
-	public void replace(String nginxPath, String nginxContent, List<String> subContent, List<String> subName, Boolean isReplace, String adminName) {
-
-		String beforeConf = null;
-		if (isReplace) {
-			// 先读取已有的配置
-			beforeConf = FileUtil.readString(nginxPath, StandardCharsets.UTF_8);
-		}
-
+	private void replaceFiles(String nginxPath, String nginxContent, List<String> subContent, List<String> subName) {
 		String confd = new File(nginxPath).getParent().replace("\\", "/") + "/conf.d/";
-		// 删除conf.d下全部文件
 		FileUtil.del(confd);
 		FileUtil.mkdir(confd);
-
-		// 写入主文件
 		FileUtil.writeString(nginxContent, nginxPath.replace(" ", "_"), StandardCharsets.UTF_8);
-
-		// 写入conf.d文件
 		if (subContent != null && subName != null) {
 			for (int i = 0; i < subContent.size(); i++) {
 				String tagert = (new File(nginxPath).getParent().replace("\\", "/") + "/conf.d/" + subName.get(i)).replace(" ", "_");
-				FileUtil.writeString(subContent.get(i), tagert, StandardCharsets.UTF_8); // 清空
+				FileUtil.writeString(subContent.get(i), tagert, StandardCharsets.UTF_8);
 			}
 		}
-
-		// 写入周边配置文件
 		ClassPathResource resource = new ClassPathResource("conf.zip");
 		InputStream inputStream = resource.getStream();
 		ZipUtil.unzip(inputStream, new File(new File(nginxPath).getParent().replace("\\", "/")), CharsetUtil.defaultCharset());
+	}
 
-		// 备份文件
-		if (isReplace) {
-			Bak bak = new Bak();
-			bak.setTime(DateUtil.format(new Date(), "yyyy-MM-dd HH:mm:ss"));
-			bak.setContent(nginxContent);
-			sqlHelper.insert(bak);
+	/**
+	 * Render the proposed configuration to a temporary directory for nginx -t.
+	 */
+	public String renderToTemp(String nginxContent, List<String> subContent, List<String> subName) {
+		String nginxPath = homeConfig.home + "temp/nginx.conf";
+		FileUtil.del(homeConfig.home + "temp");
+		replaceFiles(nginxPath, nginxContent, subContent, subName);
+		return nginxPath;
+	}
 
-			// 备份子文件
+	public void replace(String nginxPath, String nginxContent, List<String> subContent, List<String> subName, Boolean isReplace, String adminName) throws java.io.IOException {
+		if (Boolean.FALSE.equals(isReplace)) {
+			replaceFiles(nginxPath, nginxContent, subContent, subName);
+			return;
+		}
+
+		// Stage the whole config tree, then swap it in with atomic moves.
+		String staging = homeConfig.home + "publish-" + System.nanoTime();
+		String stageConf = staging + "/nginx.conf";
+		replaceFiles(stageConf, nginxContent, subContent, subName);
+
+		Path liveConf = Path.of(nginxPath.replace(" ", "_"));
+		Path parent = liveConf.toAbsolutePath().getParent();
+		Path backupRoot = parent.resolve(".nginxwebui-backup");
+		Path backupDir = backupRoot.resolve(DateUtil.format(new Date(), "yyyyMMddHHmmssSSS"));
+		Files.createDirectories(backupDir);
+
+		String beforeConf = Files.exists(liveConf) ? FileUtil.readString(liveConf.toFile(), StandardCharsets.UTF_8) : "";
+		Path liveConfd = parent.resolve("conf.d");
+		if (Files.exists(liveConf)) {
+			Files.move(liveConf, backupDir.resolve("nginx.conf"), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+		}
+		if (Files.exists(liveConfd)) {
+			Files.move(liveConfd, backupDir.resolve("conf.d"), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+		}
+		Files.move(Path.of(stageConf), liveConf, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+		Files.move(Path.of(staging, "conf.d"), liveConfd, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+		FileUtil.del(staging);
+
+		Bak bak = new Bak();
+		bak.setTime(DateUtil.format(new Date(), "yyyy-MM-dd HH:mm:ss"));
+		bak.setContent(beforeConf);
+		sqlHelper.insert(bak);
+		if (subContent != null && subName != null) {
 			for (int i = 0; i < subContent.size(); i++) {
 				BakSub bakSub = new BakSub();
 				bakSub.setBakId(bak.getId());
-
 				bakSub.setName(subName.get(i));
 				bakSub.setContent(subContent.get(i));
 				sqlHelper.insert(bakSub);
 			}
-
-			// 写入操作日志
-			if (StrUtil.isNotEmpty(adminName)) {
-				operateLogService.addLog(beforeConf, nginxContent, adminName);
-			}
+		}
+		if (StrUtil.isNotEmpty(adminName)) {
+			operateLogService.addLog(beforeConf, nginxContent, adminName);
 		}
 	}
 

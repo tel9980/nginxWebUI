@@ -3,6 +3,7 @@ package com.cym.config;
 import java.io.File;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -29,6 +30,7 @@ import com.cym.model.Remote;
 import com.cym.service.AdminService;
 import com.cym.service.CreditService;
 import com.cym.service.SettingService;
+import com.cym.utils.AppSecurityUtil;
 import com.cym.utils.BaseController;
 import com.cym.utils.JsonResult;
 import com.cym.utils.MessageUtils;
@@ -61,6 +63,8 @@ public class AppFilter implements Filter {
 	@Inject
 	SettingService settingService;
 
+
+	private static final SecureRandom CSRF_RANDOM = new SecureRandom();
 
 	@Override
 	public void doFilter(Context ctx, FilterChain chain) throws Throwable {
@@ -102,6 +106,17 @@ public class AppFilter implements Filter {
 				ctx.setHandled(true);
 				return;
 			}
+
+			if (AppSecurityUtil.csrfEnabled() && isStateChanging(ctx) && !isCsrfExempt(path) && !hasValidCreditKey(ctx) && !hasValidCsrf(ctx)) {
+				JsonResult result = new JsonResult();
+				result.setSuccess(false);
+				result.setStatus("403");
+				result.setMsg("CSRF token missing or invalid");
+				ctx.status(403);
+				ctx.output(JSONUtil.toJsonPrettyStr(result));
+				ctx.setHandled(true);
+				return;
+			}
 		}
 
 		// api过滤器
@@ -128,7 +143,7 @@ public class AppFilter implements Filter {
 			Admin admin = (Admin) ctx.session("admin");
 			String showAdmin = ctx.param("showAdmin");
 
-			if (admin.getType() != 0 && !"true".equals(showAdmin)) {
+			if (admin == null || (admin.getType() != 0 && !"true".equals(showAdmin))) {
 				JsonResult result = new JsonResult();
 				result.setSuccess(false);
 				result.setStatus("401");
@@ -144,6 +159,38 @@ public class AppFilter implements Filter {
 
 		chain.doFilter(ctx);
 
+	}
+
+	private boolean isStateChanging(Context ctx) {
+		String method = ctx.method();
+		return "POST".equalsIgnoreCase(method) || "PUT".equalsIgnoreCase(method)
+				|| "DELETE".equalsIgnoreCase(method) || "PATCH".equalsIgnoreCase(method);
+	}
+
+	private boolean isCsrfExempt(String path) {
+		return path.contains("adminPage/login/login") //
+				|| path.contains("adminPage/login/autoLogin") //
+				|| path.contains("adminPage/login/getAuth") //
+				|| path.contains("adminPage/login/getCredit") //
+				|| path.contains("adminPage/login/addAdmin") //
+				|| path.contains("adminPage/sso/");
+	}
+
+	private boolean hasValidCreditKey(Context ctx) {
+		String creditKey = ctx.param("creditKey");
+		return StrUtil.isNotEmpty(creditKey) && creditService.check(creditKey);
+	}
+
+	private boolean hasValidCsrf(Context ctx) {
+		String expected = (String) ctx.session("csrfToken");
+		if (StrUtil.isEmpty(expected)) {
+			return false;
+		}
+		String supplied = ctx.header("X-CSRF-Token");
+		if (StrUtil.isEmpty(supplied)) {
+			supplied = ctx.param("csrfToken");
+		}
+		return expected.equals(supplied);
 	}
 
 	private boolean apiInterceptor(Context ctx) {
@@ -182,6 +229,12 @@ public class AppFilter implements Filter {
 		boolean isCredit = creditService.check(creditKey);
 
 		Boolean isLogin = (Boolean) ctx.session("isLogin");
+		if (AppSecurityUtil.csrfEnabled() && StrUtil.isEmpty((String) ctx.session("csrfToken"))) {
+			byte[] bytes = new byte[32];
+			CSRF_RANDOM.nextBytes(bytes);
+			ctx.sessionSet("csrfToken", Base64.encode(bytes));
+		}
+		ctx.attrSet("csrfToken", ctx.session("csrfToken"));
 		if (!((isLogin != null && isLogin) || isCredit)) {
 			ctx.redirect("/adminPage/login");
 			return false;
@@ -253,7 +306,7 @@ public class AppFilter implements Filter {
 		ctx.attrSet("admin", ctx.session("admin"));
 
 		// 显示版本更新
-		if (versionConfig.newVersion != null && versionConfig.newVersion.getVersion() != null && versionConfig.currentVersion != null) {
+		if (AppSecurityUtil.allowInAppUpdate() && versionConfig.newVersion != null && versionConfig.newVersion.getVersion() != null && versionConfig.currentVersion != null) {
 			ctx.attrSet("newVersion", versionConfig.newVersion);
 
 			int currentVersion = Integer.parseInt(versionConfig.currentVersion.replace(".", "").replace("v", ""));

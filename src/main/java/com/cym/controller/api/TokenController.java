@@ -6,11 +6,13 @@ import java.util.Map;
 import org.noear.solon.annotation.Controller;
 import org.noear.solon.annotation.Inject;
 import org.noear.solon.annotation.Mapping;
+import org.noear.solon.core.handle.Context;
 
 import com.cym.model.Admin;
 import com.cym.service.AdminService;
 import com.cym.utils.BaseController;
 import com.cym.utils.JsonResult;
+import com.cym.utils.LoginRateLimitUtil;
 
 /**
  * 获取token
@@ -31,6 +33,11 @@ public class TokenController extends BaseController {
 	 */
 	@Mapping("getToken")
 	public JsonResult getToken(String name, String pass) {
+		String clientIp = Context.current().realIp();
+		String rateKey = "token:" + clientIp;
+		if (!LoginRateLimitUtil.allow(rateKey, 5, 60_000L)) {
+			return renderError(m.get("loginStr.backError2"));
+		}
 
 		// 用户名密码
 		Admin admin = adminService.login(name, pass);
@@ -42,6 +49,7 @@ public class TokenController extends BaseController {
 		}
 
 		admin = adminService.makeToken(admin.getId());
+		LoginRateLimitUtil.reset(rateKey);
 		Map<String, Object> map = new HashMap<String, Object>();
 		map.put("token", admin.getToken());
 		map.put("tokenTimeout", admin.getTokenTimeout());

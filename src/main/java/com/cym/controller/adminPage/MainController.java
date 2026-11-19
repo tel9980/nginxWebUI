@@ -25,6 +25,7 @@ import com.cym.service.SettingService;
 import com.cym.sqlhelper.bean.Sort;
 import com.cym.sqlhelper.bean.Sort.Direction;
 import com.cym.utils.BaseController;
+import com.cym.utils.AppSecurityUtil;
 import com.cym.utils.JarUtil;
 import com.cym.utils.JsonResult;
 import com.cym.utils.ToolUtils;
@@ -77,6 +78,9 @@ public class MainController extends BaseController {
 
 	@Mapping("/adminPage/main/autoUpdate")
 	public JsonResult autoUpdate(String url) {
+		if (!AppSecurityUtil.allowInAppUpdate()) {
+			return renderError("In-app update is disabled. Upgrade the image instead.");
+		}
 		File jar = JarUtil.getCurrentFile();
 		String path = jar.getParent();
 		LOG.info("download:" + path);

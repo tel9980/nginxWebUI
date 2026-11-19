@@ -4,6 +4,16 @@ This fork optimizes nginxWebUI 4.4.2 for personal/Dockge deployments.
 
 ## What changed (P0–P3)
 
+### Round 2 hardening — security and reliability
+- In-app self-update is disabled by default (`project.allowInAppUpdate=false`); upgrade by replacing the image instead. The "new version" prompt is hidden when disabled.
+- Added a per-IP rate limit (5 attempts / 60s) to API token issuance.
+- Added a session CSRF token for adminPage state-changing requests; the shared frontend sends it via `X-CSRF-Token` (configurable with `project.csrfProtection`).
+- Sensitive settings (`nginxExe`, `nginxPath`, mail secrets, credentials, etc.) can no longer be read/written through the generic `getKey`/`setKey`/`getLastCmd` endpoints.
+- nginx verification/reload/run command failures now return `renderError` rather than success.
+- Config publishing stages a full config tree, preserves the previous config under `.nginxwebui-backup/`, and saves the **old** content in backup history; rollback also runs `nginx -t` before restoring.
+- SQLite connections now enable WAL, `busy_timeout=5000`, and foreign keys.
+- Compose adds `no-new-privileges`, drops all Linux capabilities except the minimum needed, sets `pids_limit: 256`, `/tmp` tmpfs, and a 1 CPU limit.
+
 ### P0 — safety and observability
 - `--project.containerSafe=true`: startup no longer broad-scans/kills arbitrary `nginxWebUI`/`.jar` JVMs. It only stops a previous instance recorded in `nginxWebUI.pid`, and only if that PID is still an nginxWebUI JVM.
 - Removed startup `pkill -9 nginx`; generated config is left for explicit reload (set `NGINXWEBUI_AUTOSTART_NGINX=false` disables nginx auto-start entirely).

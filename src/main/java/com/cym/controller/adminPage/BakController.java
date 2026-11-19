@@ -14,6 +14,7 @@ import org.noear.solon.core.handle.ModelAndView;
 import com.cym.model.Bak;
 import com.cym.model.BakSub;
 import com.cym.service.BakService;
+import com.cym.service.ConfService;
 import com.cym.service.SettingService;
 import com.cym.sqlhelper.bean.Page;
 import com.cym.utils.BaseController;
@@ -27,6 +28,8 @@ import cn.hutool.core.util.StrUtil;
 public class BakController extends BaseController {
 	@Inject
 	SettingService settingService;
+	@Inject
+	ConfService confService;
 	@Inject
 	BakService bakService;
 
@@ -69,18 +72,29 @@ public class BakController extends BaseController {
 		String nginxPath = settingService.get("nginxPath");
 
 		if (StrUtil.isNotEmpty(nginxPath)) {
-			File pathFile = new File(nginxPath);
-			// 写入主文件
-			FileUtil.writeString(bak.getContent(), pathFile, StandardCharsets.UTF_8);
-
-			// 写入子文件
-			String confd = pathFile.getParent() + File.separator + "conf.d" + File.separator;
-			FileUtil.del(confd);
-			FileUtil.mkdir(confd);
-
 			List<BakSub> subList = bakService.getSubList(bak.getId());
-			for (BakSub bakSub : subList) {
-				FileUtil.writeString(bakSub.getContent(), confd + bakSub.getName(), StandardCharsets.UTF_8);
+			List<String> subContent = subList.stream().map(BakSub::getContent).collect(java.util.stream.Collectors.toList());
+			List<String> subName = subList.stream().map(BakSub::getName).collect(java.util.stream.Collectors.toList());
+			String fileTemp = confService.renderToTemp(bak.getContent(), subContent, subName);
+
+			String rs;
+			String cmd = settingService.get("nginxExe") + " -t -c " + fileTemp;
+			if (StrUtil.isNotEmpty(settingService.get("nginxDir"))) {
+				cmd += " -p " + settingService.get("nginxDir");
+			}
+			try {
+				rs = cn.hutool.core.util.RuntimeUtil.execForStr("/bin/sh", "-c", cmd);
+			} catch (Exception e) {
+				return renderError(m.get("confStr.verifyFail") + "<br>" + e.getMessage());
+			}
+			if (!rs.contains("successful") && !rs.contains("test is successful")) {
+				return renderError(m.get("confStr.verifyFail") + "<br>" + rs.replace("\n", "<br>"));
+			}
+
+			try {
+				confService.replace(nginxPath, bak.getContent(), subContent, subName, true, getAdmin().getName());
+			} catch (java.io.IOException e) {
+				return renderError(m.get("bakStr.replaceFail") + "<br>" + e.getMessage());
 			}
 			return renderSuccess();
 		} else {

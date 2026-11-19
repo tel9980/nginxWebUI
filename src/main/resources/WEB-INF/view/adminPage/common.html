@@ -22,7 +22,8 @@
 	</#list>
 	
 	<#list messages as message>
-	${message.key} = "${message.value}";
+	<#assign jsValue = message.value?js_string>
+	${message.key} = "${jsValue}";
 	</#list>
 	
 	// 这是用来看项目使用情况的, 不要删

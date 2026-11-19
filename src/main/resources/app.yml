@@ -12,7 +12,8 @@ project:
   findPass: false
   # Empty keeps legacy behavior. The optimized image sets this to /home/nginxWebUI/.
   filesystemRoot:
-  
+  # In-app self-update downloads and replaces the running jar. Keep it disabled in containers.
+  allowInAppUpdate: false
 solon:
   app:
     name: nginxWebUI

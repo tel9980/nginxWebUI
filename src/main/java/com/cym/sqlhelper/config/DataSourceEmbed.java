@@ -44,6 +44,7 @@ public class DataSourceEmbed {
 			dbConfig.setPassword("");
 			dbConfig.setMaximumPoolSize(1);
 			dbConfig.setDriverClassName("org.sqlite.JDBC");
+			dbConfig.setConnectionInitSql("PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000; PRAGMA foreign_keys=ON;");
 			dataSource = new HikariDataSource(dbConfig);
 		} else if (databaseType.equalsIgnoreCase("mysql")) {
 

@@ -9,6 +9,15 @@
 <script>
 	//根路径
 	var ctx = '${ctx}';
+	var csrfToken = '${csrfToken!}';
+
+	$.ajaxSetup({
+		beforeSend: function(xhr) {
+			if (csrfToken) {
+				xhr.setRequestHeader('X-CSRF-Token', csrfToken);
+			}
+		}
+	});
 
 	// 翻页参数
 	var page = {

@@ -24,6 +24,7 @@ import com.cym.service.ConfService;
 import com.cym.service.ServerService;
 import com.cym.service.SettingService;
 import com.cym.service.UpstreamService;
+import com.cym.utils.AppSecurityUtil;
 import com.cym.utils.BaseController;
 import com.cym.utils.JsonResult;
 import com.cym.utils.NginxUtils;
@@ -169,16 +170,12 @@ public class ConfController extends BaseController {
 		String rs = null;
 		String cmd = null;
 
-		FileUtil.del(homeConfig.home + "temp");
-		String fileTemp = homeConfig.home + "temp/nginx.conf";
-
 		ConfExt confExt = confService.buildConf(false, true);
 
 		String nginxContent = confExt.getConf();
 		List<String> subContent = confExt.getFileList().stream().map(ConfFile::getConf).collect(Collectors.toList());
 		List<String> subName = confExt.getFileList().stream().map(ConfFile::getName).collect(Collectors.toList());
-
-		confService.replace(fileTemp, nginxContent, subContent, subName, false, null);
+		String fileTemp = confService.renderToTemp(nginxContent, subContent, subName);
 
 		try {
 			cmd = nginxExe + " -t -c " + fileTemp;
@@ -230,10 +227,7 @@ public class ConfController extends BaseController {
 			subContent.set(i, content);
 		}
 
-		FileUtil.del(homeConfig.home + "temp");
-		String fileTemp = homeConfig.home + "temp/nginx.conf";
-
-		confService.replace(fileTemp, nginxContent, subContent, subName, false, null);
+		String fileTemp = confService.renderToTemp(nginxContent, subContent, subName);
 
 		String rs = null;
 		String cmd = null;
@@ -253,7 +247,7 @@ public class ConfController extends BaseController {
 		if (rs.contains("test is successful")) {
 			return renderSuccess(cmd + "<br>" + m.get("confStr.verifySuccess") + "<br>" + rs.replace("\n", "<br>"));
 		} else {
-			return renderSuccess(cmd + "<br>" + m.get("confStr.verifyFail") + "<br>" + rs.replace("\n", "<br>"));
+			return renderError(cmd + "<br>" + m.get("confStr.verifyFail") + "<br>" + rs.replace("\n", "<br>"));
 		}
 
 	}
@@ -346,11 +340,11 @@ public class ConfController extends BaseController {
 					rs = rs + m.get("confStr.mayNotRun");
 				}
 
-				return renderSuccess(cmd + "<br>" + m.get("confStr.reloadFail") + "<br>" + rs.replace("\n", "<br>"));
+				return renderError(cmd + "<br>" + m.get("confStr.reloadFail") + "<br>" + rs.replace("\n", "<br>"));
 			}
 		} catch (Exception e) {
 			logger.error(e.getMessage(), e);
-			return renderSuccess(m.get("confStr.reloadFail") + "<br>" + e.getMessage().replace("\n", "<br>"));
+			return renderError(m.get("confStr.reloadFail") + "<br>" + e.getMessage().replace("\n", "<br>"));
 		}
 	}
 
@@ -383,11 +377,11 @@ public class ConfController extends BaseController {
 					|| rs.toLowerCase().contains("stopping")) {
 				return renderSuccess(cmd + "<br>" + m.get("confStr.runSuccess") + "<br>" + rs.replace("\n", "<br>"));
 			} else {
-				return renderSuccess(cmd + "<br>" + m.get("confStr.runFail") + "<br>" + rs.replace("\n", "<br>"));
+				return renderError(cmd + "<br>" + m.get("confStr.runFail") + "<br>" + rs.replace("\n", "<br>"));
 			}
 		} catch (Exception e) {
 			logger.error(e.getMessage(), e);
-			return renderSuccess(m.get("confStr.runFail") + "<br>" + e.getMessage().replace("\n", "<br>"));
+			return renderError(m.get("confStr.runFail") + "<br>" + e.getMessage().replace("\n", "<br>"));
 		}
 	}
 
@@ -465,6 +459,9 @@ public class ConfController extends BaseController {
 
 	@Mapping(value = "getLastCmd")
 	public JsonResult getLastCmd(String type) {
+		if (AppSecurityUtil.isSensitiveSetting(type)) {
+			return renderError("Setting is protected: " + type);
+		}
 		return renderSuccess(settingService.get(type));
 	}
 
@@ -513,6 +510,9 @@ public class ConfController extends BaseController {
 
 	@Mapping(value = "update")
 	public JsonResult update() {
+		if (!AppSecurityUtil.allowInAppUpdate()) {
+			return renderError("In-app update is disabled. Upgrade the image instead.");
+		}
 		versionConfig.checkVersion();
 		if (Integer.parseInt(versionConfig.currentVersion.replace(".", "").replace("v", "")) < Integer.parseInt(versionConfig.newVersion.getVersion().replace(".", "").replace("v", ""))) {
 			mainController.autoUpdate(versionConfig.newVersion.getUrl());
@@ -524,11 +524,17 @@ public class ConfController extends BaseController {
 
 	@Mapping(value = "getKey")
 	public JsonResult getKey(String key) {
+		if (AppSecurityUtil.isSensitiveSetting(key)) {
+			return renderError("Setting is protected: " + key);
+		}
 		return renderSuccess(settingService.get(key));
 	}
 
 	@Mapping(value = "setKey")
 	public JsonResult setKey(String key, String val) {
+		if (AppSecurityUtil.isSensitiveSetting(key)) {
+			return renderError("Setting is protected: " + key);
+		}
 		settingService.set(key, val);
 		return renderSuccess();
 	}
