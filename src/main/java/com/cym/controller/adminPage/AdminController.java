@@ -40,6 +40,8 @@ import cn.hutool.core.util.StrUtil;
 @Controller
 @Mapping("/adminPage/admin")
 public class AdminController extends BaseController {
+	private static final String MASKED_PASSWORD = "******";
+
 	Logger logger = LoggerFactory.getLogger(this.getClass());
 	@Inject
 	AdminService adminService;
@@ -150,7 +152,8 @@ public class AdminController extends BaseController {
 		map.put("mail_port", settingService.get("mail_port"));
 		map.put("mail_from", settingService.get("mail_from"));
 		map.put("mail_user", settingService.get("mail_user"));
-		map.put("mail_pass", settingService.get("mail_pass"));
+		String storedMailPass = settingService.get("mail_pass");
+		map.put("mail_pass", StrUtil.isNotEmpty(storedMailPass) ? MASKED_PASSWORD : storedMailPass);
 		map.put("mail_ssl", settingService.get("mail_ssl"));
 		map.put("mail_interval", settingService.get("mail_interval"));
 
@@ -163,6 +166,9 @@ public class AdminController extends BaseController {
 		settingService.set("mail_port", mail_port);
 		settingService.set("mail_user", mail_user);
 		settingService.set("mail_from", mail_from);
+		if (StrUtil.isEmpty(mail_pass) || MASKED_PASSWORD.equals(mail_pass)) {
+			mail_pass = settingService.get("mail_pass");
+		}
 		settingService.set("mail_pass", mail_pass);
 		settingService.set("mail_ssl", mail_ssl);
 		settingService.set("mail_interval", mail_interval);

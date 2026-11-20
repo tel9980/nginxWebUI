@@ -44,6 +44,7 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
+            type=raw,value=latest
             type=raw,value=4.4.2-optimized
             type=raw,value=optimized
             type=ref,event=tag

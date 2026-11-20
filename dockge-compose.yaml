@@ -1,6 +1,6 @@
 services:
   nginxwebui:
-    image: ghcr.io/tel9980/nginxwebui:4.4.2-optimized
+    image: ghcr.io/tel9980/nginxwebui:latest
     container_name: nginxwebui
     restart: unless-stopped
     ports:
@@ -51,7 +51,7 @@ services:
 # network_mode: host is used because ddns-go detects the host's real public
 # IPv6/global addresses from the network namespace.
   ddns-go:
-    image: ghcr.io/tel9980/ddns-go:optimized
+    image: ghcr.io/tel9980/ddns-go:latest
     container_name: ddns-go
     restart: unless-stopped
     network_mode: host
@@ -71,7 +71,7 @@ services:
       - FOWNER
     pids_limit: 64
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9876/login >/dev/null 2>&1 || exit 1"]
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:9876/healthz || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3

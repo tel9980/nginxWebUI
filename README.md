@@ -2,16 +2,34 @@
 
 ### [README.md English version](README_EN.md)
 
-> ## 🛠️ tel9980 优化镜像（本文档所在 fork）
+> ## 🛠️ tel9980 优化版（本文档所在 fork）
 >
-> 本仓库是 [cym1102/nginxWebUI](https://github.com/cym1102/nginxWebUI) 的个人优化 fork，面向 **Dockge / Docker 个人部署**，原版功能保持不变。
+> 本仓库是 [cym1102/nginxWebUI](https://github.com/cym1102/nginxWebUI) 的个人优化 fork，面向 **Dockge / Docker 个人部署**，只保留开源版功能，原版使用方式不变。
 >
-> - **镜像**：`ghcr.io/tel9980/nginxwebui:optimized`（也带 `:4.4.2-optimized` 和 `:sha-<commit>` 标签，amd64 + arm64）。**公开可拉取，无需登录**。
-> - **已做加固**：容器安全启动（不再 `kill -9` 误杀、日志输出到 stdout）、精简 nginx 模块、Java 17、HEALTHCHECK、CSRF 与 token 限流、敏感设置项保护、配置原子发布与自动备份、导入导出路径白名单、默认脱敏导出、自更新禁用（升级请换镜像），并持续跟进依赖漏洞扫描。
-> - **Dockge 一键部署**：直接用仓库根目录的 `dockge-compose.yaml`，默认只监听 `127.0.0.1:8080`，数据持久化到 `./data`。若同栈使用 `ddns-go`，反代目标填 `http://host.docker.internal:9876`（详见 `OPTIMIZATIONS.md` 与 `reverse-proxy-ddns-go.conf.example`）。
-> - **常用开关**（在 `compose` 的 `BOOT_OPTIONS` 或 `app.yml` 中）：`project.filesystemRoot=/home/nginxWebUI/`、`project.trustedProxyHeader=true` + `project.allowedHosts`（仅在可信反代后开启）、`project.apiTokenTtlMinutes`、`project.creditKeyEnabled/creditKeyTtlMinutes`、`project.sqliteBackupEnabled/Keep`。
-> - **安全提醒**：本程序会执行 root 级 nginx/acme 操作，请务必设置强密码、不要裸奔公网、用反代加 HTTPS/认证，并定期备份 `./data`。
-> - 完整改动与构建说明见 [OPTIMIZATIONS.md](OPTIMIZATIONS.md)。上游原始说明见下方。
+> **镜像（公开可拉取，无需登录，amd64 + arm64）**
+> | 标签 | 用途 |
+> | --- | --- |
+> | `ghcr.io/tel9980/nginxwebui:latest` | **推荐**，始终指向最新发布，Dockge 直接拉这个即可 |
+> | `:4.4.2-optimized` | 固定版本标签 |
+> | `:optimized` | 稳定别名 |
+> | `:sha-<commit>` | 每次提交对应，便于回滚 |
+>
+> **已完成的加固（累计 8 轮）**
+> - 容器：安全启动（不再 `kill -9` 误杀）、日志输出到 stdout、精简 nginx 模块、Java 17、HEALTHCHECK、tmpfs / cap 收敛 / 内存 CPU 限额。
+> - 鉴权：CSRF（含可信代理 IP）、API token 限流与 TTL / 撤销、creditKey 生命周期（可停用 / 过期 / 撤销 / 改密自动吊销）、敏感设置项保护。
+> - 配置：原子发布 + 变更前后备份、`nginx -t` 通过才落盘、include/path 白名单（挡 `../` 与 symlink 逃逸）、回滚前先测试。
+> - 数据：SQLite WAL + 备份 `integrity_check` 校验 + 数量/天数双保留；导入导出路径白名单、默认脱敏导出、事务式快照/回滚。
+> - 网络：默认禁用外网版本检查与应用内自更新（升级 = 换镜像）；仅可信反代后才采信 `X-Forwarded-*`；邮件密码等敏感项显示脱敏。
+> - 工程：14 个 JUnit 单测、CI 真正跑测试、依赖漏洞修复（Java critical 清零）、SBOM 与镜像扫描、Node 24 actions。
+>
+> **Dockge 快速部署**：直接用仓库根目录的 `dockge-compose.yaml`（已同时编排 `ddns-go`），默认只监听 `127.0.0.1:8080`，数据持久化到 `./data`。管理页请放在反代 + HTTPS/认证之后。
+>
+> **常用开关**（compose 的 `BOOT_OPTIONS` 或 `app.yml`）：
+> - `project.filesystemRoot=/home/nginxWebUI/`、`project.extraConfigRoots=<逗号分隔目录>`（若 `root/alias` 指向项目目录之外的静态站点，需要放行）。
+> - `project.trustedProxyHeader=true` + `project.allowedHosts`（**仅在可信反代后**开启）、`project.apiTokenTtlMinutes=60`、`project.creditKeyEnabled=true` / `creditKeyTtlMinutes=0`。
+> - `project.sqliteBackupKeep=7`、`project.sqliteBackupRetainDays=30`、`project.allowInAppUpdate=false`（保持默认）。
+>
+> **安全提醒**：本程序会执行 root 级 nginx/acme 操作，务必设置强密码、不要裸奔公网、定期备份 `./data`。完整改动见 [OPTIMIZATIONS.md](OPTIMIZATIONS.md)，反代 ddns-go 见 [reverse-proxy-ddns-go.conf.example](reverse-proxy-ddns-go.conf.example)。上游原始说明见下方。
 
 #### 介绍
 nginx网页配置工具

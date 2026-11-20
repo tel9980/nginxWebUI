@@ -1,15 +1,33 @@
 # nginxWebUI
 
-> ## 🛠️ tel9980 optimized image (this fork)
+> ## 🛠️ tel9980 optimized fork (this repository)
 >
-> This repository is a personal optimization fork of [cym1102/nginxWebUI](https://github.com/cym1102/nginxWebUI) for **Dockge / Docker personal deployments**. Upstream features are unchanged.
+> This is a personal optimization fork of [cym1102/nginxWebUI](https://github.com/cym1102/nginxWebUI) for **Dockge / Docker personal deployments**. It contains only the open-source edition; upstream usage is unchanged.
 >
-> - **Image**: `ghcr.io/tel9980/nginxwebui:optimized` (also `:4.4.2-optimized` and `:sha-<commit>`, amd64 + arm64). Public pull, no login required.
-> - **Hardening**: safe container startup (no `kill -9` collateral, logs to stdout), slim nginx modules, Java 17, HEALTHCHECK, CSRF + token rate limiting, sensitive-setting guards, atomic config publishing with backups, import/export path allowlist, secret-free export by default, in-app self-update disabled (upgrade by replacing the image), and ongoing dependency vulnerability scanning.
-> - **Dockge**: use `dockge-compose.yaml` at the repo root; it binds only `127.0.0.1:8080` and persists data to `./data`. When co-deploying `ddns-go`, the reverse-proxy target is `http://host.docker.internal:9876` (see `OPTIMIZATIONS.md` and `reverse-proxy-ddns-go.conf.example`).
-> - **Common flags** (via compose `BOOT_OPTIONS` or `app.yml`): `project.filesystemRoot=/home/nginxWebUI/`, `project.trustedProxyHeader=true` plus `project.allowedHosts` (only behind a trusted reverse proxy), `project.apiTokenTtlMinutes`, `project.creditKeyEnabled/creditKeyTtlMinutes`, `project.sqliteBackupEnabled/Keep`.
-> - **Security note**: this tool executes privileged nginx/acme operations. Use a strong password, keep it off the public Internet, put HTTPS/auth in front, and back up `./data` regularly.
-> - Full change log and build instructions: [OPTIMIZATIONS.md](OPTIMIZATIONS.md). Original upstream documentation follows below.
+> **Images (public pull, no login, amd64 + arm64)**
+> | Tag | Purpose |
+> | --- | --- |
+> | `ghcr.io/tel9980/nginxwebui:latest` | **Recommended** — always the newest release; just pull this in Dockge |
+> | `:4.4.2-optimized` | Pinned version |
+> | `:optimized` | Stable alias |
+> | `:sha-<commit>` | Per-commit tag for rollbacks |
+>
+> **Hardening (8 rounds)**
+> - Container: safe startup (no `kill -9` collateral), logs to stdout, slim nginx modules, Java 17, HEALTHCHECK, tmpfs / capability limits / memory+CPU caps.
+> - Auth: CSRF (with trusted-proxy IP support), API token rate limit + TTL + revoke, creditKey lifecycle (disable/expire/revoke/auto-revoke on password change), sensitive-setting guards.
+> - Config: atomic publish + before/after backups, `nginx -t` gate before writing, include/path whitelist (blocks `../` and symlink escapes), rollback only after test.
+> - Data: SQLite WAL + backup `integrity_check` + count/day retention; import/export path allowlist, secret-free export by default, transactional snapshot/rollback.
+> - Network: external version check and in-app self-update disabled by default (upgrade = replace image); `X-Forwarded-*` trusted only behind a trusted proxy; SMTP password masked in UI.
+> - Engineering: 14 JUnit tests, CI really runs tests, Java dependency criticals patched, SBOM + image scan, Node 24 actions.
+>
+> **Dockge**: use `dockge-compose.yaml` at the repo root (it also orchestrates `ddns-go`); nginxWebUI binds only `127.0.0.1:8080` and persists data to `./data`. Put the admin UI behind a reverse proxy with HTTPS/auth.
+>
+> **Common flags** (compose `BOOT_OPTIONS` or `app.yml`):
+> - `project.filesystemRoot=/home/nginxWebUI/`, `project.extraConfigRoots=<comma-separated dirs>` (required if `root/alias` serves static files outside the project home).
+> - `project.trustedProxyHeader=true` + `project.allowedHosts` (**only** behind a trusted reverse proxy), `project.apiTokenTtlMinutes=60`, `project.creditKeyEnabled=true` / `creditKeyTtlMinutes=0`.
+> - `project.sqliteBackupKeep=7`, `project.sqliteBackupRetainDays=30`, `project.allowInAppUpdate=false` (keep default).
+>
+> **Security note**: this tool executes privileged nginx/acme operations. Use a strong password, keep it off the public Internet, put HTTPS/auth in front, and back up `./data` regularly. Full change log: [OPTIMIZATIONS.md](OPTIMIZATIONS.md); ddns-go reverse proxy: [reverse-proxy-ddns-go.conf.example](reverse-proxy-ddns-go.conf.example). Original upstream documentation follows below.
 
 #### Introduce
 Nginx web page configuration tool

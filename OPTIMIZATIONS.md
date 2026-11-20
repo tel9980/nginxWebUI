@@ -99,6 +99,14 @@ nginxWebUI can generate nginx config and execute privileged nginx/acme operation
 - Removed the only remaining "professional edition" traces: the red upgrade link in the admin header, the `commonStr.pro` i18n key in all three locale files, and the pro-vs-open-source comparison sections and links from both `README.md` and `README_EN.md`.
 - This fork has always been the pure open-source codebase; the commercial edition is a separate upstream product whose code is not present here. No features were changed.
 
+## Round 9 — final sweep, latest tag and fork documentation
+
+- SMTP password is now masked in the admin mail-settings UI (`******` sentinel); saving the sentinel or a blank field preserves the stored secret, while a real new value still updates it (mail delivery reads the real stored value).
+- Added a responsive viewport meta tag to the shared adminPage head — a small usability fix for narrow screens.
+- GHCR workflows in both repos now also publish a rolling `latest` tag; `dockge-compose.yaml` uses `:latest` for both services so a container recreate picks up the newest image. The pinned/alias/sha tags remain available for rollback.
+- The ddns-go service in `dockge-compose.yaml` now uses the semantic `/healthz` endpoint via busybox `wget` (the optimized ddns-go image no longer ships curl).
+- Both READMEs in both repos now carry a complete fork-specific section (image tag table, hardening summary, Dockge usage, flags, upstream link); the unrelated upstream docs remain below it.
+
 ## Round 8 — config path whitelist, verified backups, unit tests
 - Final rendered nginx.conf and conf.d fragments are validated before every `nginx -t` and publish: file-referencing directives (`include`, `ssl_certificate*`, `auth_basic_user_file`, `root/alias`, log/temp paths, `unix:` proxy_pass) must resolve under `project.home` (canonicalized, so symlink escapes are rejected). Extra roots can be allowed with `project.extraConfigRoots`. Network `proxy_pass http(s)://...` is untouched.
 - Invalid paths now surface as `renderError` in check/publish/rollback instead of writing the config or throwing a 500.
