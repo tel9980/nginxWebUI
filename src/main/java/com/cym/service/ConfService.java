@@ -41,6 +41,8 @@ import com.cym.sqlhelper.bean.Sort;
 import com.cym.sqlhelper.bean.Sort.Direction;
 import com.cym.sqlhelper.utils.ConditionAndWrapper;
 import com.cym.sqlhelper.utils.SqlHelper;
+import com.cym.utils.AppSecurityUtil;
+import com.cym.utils.ConfigPathValidator;
 import com.cym.utils.PathSafetyUtil;
 import com.cym.utils.SystemTool;
 import com.cym.utils.ToolUtils;
@@ -996,7 +998,8 @@ public class ConfService {
 		return StrUtil.join("\n", strs);
 	}
 
-	private void replaceFiles(String nginxPath, String nginxContent, List<String> subContent, List<String> subName) {
+	private void replaceFiles(String nginxPath, String nginxContent, List<String> subContent, List<String> subName) throws IOException {
+		validateConfigPaths(nginxPath, nginxContent, subContent, subName);
 		String confd = new File(nginxPath).getParent().replace("\\", "/") + "/conf.d/";
 		FileUtil.del(confd);
 		FileUtil.mkdir(confd);
@@ -1013,9 +1016,42 @@ public class ConfService {
 	}
 
 	/**
+	 * Validates every file-referencing directive in the final rendered config.
+	 * The project home is the only allowed root by default; additional roots can
+	 * be configured with {@code project.extraConfigRoots} (comma-separated).
+	 */
+	private void validateConfigPaths(String nginxPath, String nginxContent, List<String> subContent, List<String> subName) throws IOException {
+		List<Path> roots = new ArrayList<>();
+		roots.add(new File(homeConfig.home).getAbsoluteFile().getCanonicalFile().toPath().normalize());
+		String extra = AppSecurityUtil.extraConfigRoots();
+		if (StrUtil.isNotEmpty(extra)) {
+			for (String item : extra.split(",")) {
+				String trimmed = item.trim();
+				if (StrUtil.isEmpty(trimmed)) {
+					continue;
+				}
+				File dir = new File(trimmed);
+				if (!dir.isAbsolute()) {
+					dir = new File(homeConfig.home, trimmed);
+				}
+				roots.add(dir.getCanonicalFile().toPath().normalize());
+			}
+		}
+
+		File baseDir = new File(nginxPath).getAbsoluteFile().getParentFile();
+		ConfigPathValidator.validate(nginxContent, baseDir, roots);
+		if (subContent != null && subName != null) {
+			for (int i = 0; i < subContent.size() && i < subName.size(); i++) {
+				ConfigPathValidator.validateChildName(subName.get(i));
+				ConfigPathValidator.validate(subContent.get(i), baseDir, roots);
+			}
+		}
+	}
+
+	/**
 	 * Render the proposed configuration to a temporary directory for nginx -t.
 	 */
-	public String renderToTemp(String nginxContent, List<String> subContent, List<String> subName) {
+	public String renderToTemp(String nginxContent, List<String> subContent, List<String> subName) throws IOException {
 		String nginxPath = homeConfig.home + "temp/nginx.conf";
 		FileUtil.del(homeConfig.home + "temp");
 		replaceFiles(nginxPath, nginxContent, subContent, subName);

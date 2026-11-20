@@ -1,6 +1,7 @@
 package com.cym.controller.adminPage;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
@@ -75,7 +76,12 @@ public class BakController extends BaseController {
 			List<BakSub> subList = bakService.getSubList(bak.getId());
 			List<String> subContent = subList.stream().map(BakSub::getContent).collect(java.util.stream.Collectors.toList());
 			List<String> subName = subList.stream().map(BakSub::getName).collect(java.util.stream.Collectors.toList());
-			String fileTemp = confService.renderToTemp(bak.getContent(), subContent, subName);
+			String fileTemp;
+			try {
+				fileTemp = confService.renderToTemp(bak.getContent(), subContent, subName);
+			} catch (IOException e) {
+				return renderError(m.get("confStr.error3") + ":" + e.getMessage());
+			}
 
 			String rs;
 			String cmd = settingService.get("nginxExe") + " -t -c " + fileTemp;
@@ -93,7 +99,7 @@ public class BakController extends BaseController {
 
 			try {
 				confService.replace(nginxPath, bak.getContent(), subContent, subName, true, getAdmin().getName());
-			} catch (java.io.IOException e) {
+			} catch (IOException e) {
 				return renderError(m.get("bakStr.replaceFail") + "<br>" + e.getMessage());
 			}
 			return renderSuccess();

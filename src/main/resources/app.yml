@@ -31,6 +31,11 @@ project:
   # Daily SQLite backup (copies sqlite.db into backup/ and keeps N copies).
   sqliteBackupEnabled: true
   sqliteBackupKeep: 7
+  # Also delete backups older than this many days. 0 = disabled.
+  sqliteBackupRetainDays: 30
+  # Comma-separated extra roots allowed for file-referencing nginx directives
+  # (include/ssl_certificate/etc.). Relative paths are under project.home.
+  extraConfigRoots:
 solon:
   app:
     name: nginxWebUI

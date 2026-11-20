@@ -55,6 +55,16 @@ public final class AppSecurityUtil {
 		return keep < 0 ? 0 : keep;
 	}
 
+	public static int sqliteBackupRetainDays() {
+		int days = Solon.cfg().getInt("project.sqliteBackupRetainDays", 30);
+		return days < 0 ? 0 : days;
+	}
+
+	/** Comma-separated extra roots allowed for file-referencing nginx directives. */
+	public static String extraConfigRoots() {
+		return Solon.cfg().get("project.extraConfigRoots");
+	}
+
 	public static boolean isSensitiveSetting(String key) {
 		return key != null && SENSITIVE_SETTING_KEYS.contains(key);
 	}

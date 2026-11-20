@@ -1,14 +1,8 @@
 package com.cym.task;
 
 import java.io.File;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.text.SimpleDateFormat;
-import java.util.Arrays;
-import java.util.Comparator;
 import java.util.Date;
-import java.util.List;
-import java.util.stream.Collectors;
 
 import org.noear.solon.annotation.Component;
 import org.noear.solon.annotation.Inject;
@@ -19,6 +13,7 @@ import org.slf4j.LoggerFactory;
 import com.cym.config.HomeConfig;
 import com.cym.sqlhelper.config.DataSourceEmbed;
 import com.cym.utils.AppSecurityUtil;
+import com.cym.utils.SqliteBackupUtil;
 
 import cn.hutool.core.io.FileUtil;
 
@@ -26,7 +21,8 @@ import cn.hutool.core.io.FileUtil;
  * Daily backup of the embedded SQLite database.
  *
  * Uses {@code VACUUM INTO} so the copy is taken from within SQLite itself,
- * avoiding an inconsistent copy of a WAL-mode database.
+ * avoiding an inconsistent copy of a WAL-mode database. Every created backup
+ * is verified with a fresh SQLite connection before it is retained.
  */
 @Component
 public class SqliteBackupTask {
@@ -53,44 +49,47 @@ public class SqliteBackupTask {
 
 		File backupDir = new File(homeConfig.home + "backup");
 		if (!backupDir.exists() && !backupDir.mkdirs()) {
-			LOG.error("Cannot create SQLite backup directory: " + backupDir.getAbsolutePath());
+			LOG.error("SQLITE_BACKUP_FAILURE cannot create backup directory: " + backupDir.getAbsolutePath());
 			return;
 		}
 
 		String fileName = "sqlite-" + new SimpleDateFormat("yyyyMMdd-HHmmss").format(new Date()) + ".db";
 		File target = new File(backupDir, fileName);
-		try (Connection connection = dataSourceEmbed.getDataSource().getConnection();
-				PreparedStatement statement = connection.prepareStatement("VACUUM INTO '" + target.getAbsolutePath().replace("'", "''") + "'")) {
+		boolean created = false;
+		try (java.sql.Connection connection = dataSourceEmbed.getDataSource().getConnection();
+				java.sql.PreparedStatement statement = connection.prepareStatement(
+						"VACUUM INTO '" + target.getAbsolutePath().replace("'", "''") + "'")) {
 			statement.executeUpdate();
-			LOG.info("SQLite backup created: " + target.getAbsolutePath());
+			created = true;
 		} catch (Exception e) {
-			LOG.error("Failed to backup SQLite database", e);
+			LOG.error("SQLITE_BACKUP_FAILURE VACUUM INTO failed; trying file copy", e);
 			try {
 				FileUtil.copy(dbFile, target, true);
-				LOG.info("SQLite backup copied with FileUtil: " + target.getAbsolutePath());
+				created = true;
 			} catch (Exception copyError) {
-				LOG.error("Failed to copy SQLite database to backup", copyError);
+				LOG.error("SQLITE_BACKUP_FAILURE file copy failed", copyError);
 				return;
 			}
 		}
 
-		pruneOldBackups(backupDir);
-	}
-
-	private void pruneOldBackups(File backupDir) {
-		int keep = AppSecurityUtil.sqliteBackupKeep();
-		if (keep < 0) {
+		if (!created) {
+			LOG.error("SQLITE_BACKUP_FAILURE no backup was created");
 			return;
 		}
-		File[] files = backupDir.listFiles((dir, name) -> name.startsWith("sqlite-") && name.endsWith(".db"));
-		if (files == null || files.length <= keep) {
-			return;
-		}
-		List<File> sorted = Arrays.stream(files).sorted(Comparator.comparingLong(File::lastModified)).collect(Collectors.toList());
-		for (int i = 0; i < sorted.size() - keep; i++) {
-			if (!sorted.get(i).delete()) {
-				LOG.warn("Cannot remove old SQLite backup: " + sorted.get(i).getAbsolutePath());
+		String problem = SqliteBackupUtil.verifyBackup(target);
+		if (problem != null) {
+			LOG.error("SQLITE_BACKUP_FAILURE verification failed: " + problem + "; deleting " + target.getAbsolutePath());
+			if (!target.delete()) {
+				target.deleteOnExit();
 			}
+			return;
+		}
+		LOG.info("SQLite backup created and verified: " + target.getAbsolutePath());
+
+		int deleted = SqliteBackupUtil.pruneBackups(backupDir, AppSecurityUtil.sqliteBackupKeep(),
+				AppSecurityUtil.sqliteBackupRetainDays(), System.currentTimeMillis());
+		if (deleted > 0) {
+			LOG.info("Pruned " + deleted + " old SQLite backup(s)");
 		}
 	}
 }

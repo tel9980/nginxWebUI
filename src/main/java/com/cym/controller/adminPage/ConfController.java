@@ -171,7 +171,13 @@ public class ConfController extends BaseController {
 		String nginxContent = confExt.getConf();
 		List<String> subContent = confExt.getFileList().stream().map(ConfFile::getConf).collect(Collectors.toList());
 		List<String> subName = confExt.getFileList().stream().map(ConfFile::getName).collect(Collectors.toList());
-		String fileTemp = confService.renderToTemp(nginxContent, subContent, subName);
+		String fileTemp;
+		try {
+			fileTemp = confService.renderToTemp(nginxContent, subContent, subName);
+		} catch (Exception e) {
+			logger.error("Configuration path validation failed", e);
+			return renderError(m.get("confStr.error3") + ":" + e.getMessage());
+		}
 
 		try {
 			cmd = nginxExe + " -t -c " + fileTemp;
@@ -223,7 +229,13 @@ public class ConfController extends BaseController {
 			subContent.set(i, content);
 		}
 
-		String fileTemp = confService.renderToTemp(nginxContent, subContent, subName);
+		String fileTemp;
+		try {
+			fileTemp = confService.renderToTemp(nginxContent, subContent, subName);
+		} catch (Exception e) {
+			logger.error("Configuration path validation failed", e);
+			return renderError(m.get("confStr.error3") + ":" + e.getMessage());
+		}
 
 		String rs = null;
 		String cmd = null;

@@ -99,6 +99,12 @@ nginxWebUI can generate nginx config and execute privileged nginx/acme operation
 - Removed the only remaining "professional edition" traces: the red upgrade link in the admin header, the `commonStr.pro` i18n key in all three locale files, and the pro-vs-open-source comparison sections and links from both `README.md` and `README_EN.md`.
 - This fork has always been the pure open-source codebase; the commercial edition is a separate upstream product whose code is not present here. No features were changed.
 
+## Round 8 — config path whitelist, verified backups, unit tests
+- Final rendered nginx.conf and conf.d fragments are validated before every `nginx -t` and publish: file-referencing directives (`include`, `ssl_certificate*`, `auth_basic_user_file`, `root/alias`, log/temp paths, `unix:` proxy_pass) must resolve under `project.home` (canonicalized, so symlink escapes are rejected). Extra roots can be allowed with `project.extraConfigRoots`. Network `proxy_pass http(s)://...` is untouched.
+- Invalid paths now surface as `renderError` in check/publish/rollback instead of writing the config or throwing a 500.
+- SQLite backups are verified after creation with a fresh `integrity_check` + schema check; bad backups are deleted. Pruning now supports both count (`project.sqliteBackupKeep`, default 7) and age (`project.sqliteBackupRetainDays`, default 30).
+- Added JUnit 5 unit tests (pinned Surefire 3.2.5 — the inherited 2.12.4 silently skipped JUnit 5): 14 tests covering config path validation, backup verification/pruning, sensitive-setting keys, and proxy authority parsing. CI now runs the tests during `mvn clean package` (removed `-DskipTests`).
+
 ## Round 7 — remove upstream contact/donation blocks
 
 - Removed upstream QQ groups, e-mail, official-site/Gitee/GitHub/video links and the WeChat donation QR from both `README.md` and `README_EN.md` (the functional Gitee jar download links in the install section are kept).
