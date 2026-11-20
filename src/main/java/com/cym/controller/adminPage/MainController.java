@@ -25,31 +25,23 @@ import com.cym.service.SettingService;
 import com.cym.sqlhelper.bean.Sort;
 import com.cym.sqlhelper.bean.Sort.Direction;
 import com.cym.utils.BaseController;
-import com.cym.utils.AppSecurityUtil;
-import com.cym.utils.JarUtil;
 import com.cym.utils.JsonResult;
 import com.cym.utils.ToolUtils;
-import com.cym.utils.UpdateUtils;
 import com.github.odiszapc.nginxparser.NgxBlock;
 import com.github.odiszapc.nginxparser.NgxConfig;
 import com.github.odiszapc.nginxparser.NgxDumper;
 import com.github.odiszapc.nginxparser.NgxParam;
 
 import cn.hutool.core.io.FileUtil;
-import cn.hutool.http.HttpUtil;
 
 @Mapping("")
 @Controller
 public class MainController extends BaseController {
 	Logger logger = LoggerFactory.getLogger(this.getClass());
 	@Inject
-	UpdateUtils updateUtils;
-	@Inject
 	SettingService settingService;
 	@Inject
 	ConfService confService;
-
-	private static final Logger LOG = LoggerFactory.getLogger(MainController.class);
 
 	@Mapping("")
 	public ModelAndView index(ModelAndView modelAndView, String keywords) {
@@ -74,21 +66,6 @@ public class MainController extends BaseController {
 		}
 
 		return renderError();
-	}
-
-	@Mapping("/adminPage/main/autoUpdate")
-	public JsonResult autoUpdate(String url) {
-		if (!AppSecurityUtil.allowInAppUpdate()) {
-			return renderError("In-app update is disabled. Upgrade the image instead.");
-		}
-		File jar = JarUtil.getCurrentFile();
-		String path = jar.getParent();
-		LOG.info("download:" + path);
-		HttpUtil.downloadFile(url, path);
-
-		String fileName = url.split("/")[url.split("/").length - 1];
-		updateUtils.run(path + File.separator + fileName);
-		return renderSuccess();
 	}
 
 	@Mapping("/adminPage/main/preview")

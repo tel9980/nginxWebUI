@@ -22,6 +22,15 @@ project:
   creditKeyEnabled: true
   # creditKey lifetime in minutes; 0 means no expiry (legacy behavior).
   creditKeyTtlMinutes: 0
+  # Trust X-Forwarded-Host / X-Forwarded-Port only behind a trusted reverse proxy.
+  # false = always derive the context host from the request URL.
+  trustedProxyHeader: false
+  # Comma-separated host names (optionally with :port) accepted when
+  # trustedProxyHeader is true. Empty = no forwarded host is ever trusted.
+  allowedHosts:
+  # Daily SQLite backup (copies sqlite.db into backup/ and keeps N copies).
+  sqliteBackupEnabled: true
+  sqliteBackupKeep: 7
 solon:
   app:
     name: nginxWebUI

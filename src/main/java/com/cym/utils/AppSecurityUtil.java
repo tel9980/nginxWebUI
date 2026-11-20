@@ -46,6 +46,15 @@ public final class AppSecurityUtil {
 		return Solon.cfg().getBool("project.csrfProtection", true);
 	}
 
+	public static boolean sqliteBackupEnabled() {
+		return Solon.cfg().getBool("project.sqliteBackupEnabled", true);
+	}
+
+	public static int sqliteBackupKeep() {
+		int keep = Solon.cfg().getInt("project.sqliteBackupKeep", 7);
+		return keep < 0 ? 0 : keep;
+	}
+
 	public static boolean isSensitiveSetting(String key) {
 		return key != null && SENSITIVE_SETTING_KEYS.contains(key);
 	}

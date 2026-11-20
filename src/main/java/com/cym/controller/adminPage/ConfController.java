@@ -53,10 +53,6 @@ public class ConfController extends BaseController {
 	ServerService serverService;
 	@Inject
 	ConfService confService;
-	@Inject
-	MainController mainController;
-	@Inject
-	VersionConfig versionConfig;
 
 	String aesKey = "aes";
 
@@ -506,20 +502,6 @@ public class ConfController extends BaseController {
 	public JsonResult decompose(String decompose) {
 		settingService.set("decompose", decompose);
 		return renderSuccess();
-	}
-
-	@Mapping(value = "update")
-	public JsonResult update() {
-		if (!AppSecurityUtil.allowInAppUpdate()) {
-			return renderError("In-app update is disabled. Upgrade the image instead.");
-		}
-		versionConfig.checkVersion();
-		if (Integer.parseInt(versionConfig.currentVersion.replace(".", "").replace("v", "")) < Integer.parseInt(versionConfig.newVersion.getVersion().replace(".", "").replace("v", ""))) {
-			mainController.autoUpdate(versionConfig.newVersion.getUrl());
-			return renderSuccess(m.get("confStr.updateSuccess"));
-		} else {
-			return renderSuccess(m.get("confStr.noNeedUpdate"));
-		}
 	}
 
 	@Mapping(value = "getKey")

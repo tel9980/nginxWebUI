@@ -3,7 +3,9 @@ $(function() {
 });
 
 function dExport() {
-	window.open(ctx + "/adminPage/export/dataExport")
+	if (confirm(exportStr.exportConfirm)) {
+		window.open(ctx + "/adminPage/export/dataExport")
+	}
 }
 
 
@@ -24,6 +26,10 @@ function dImportOver() {
 
 function finisheUpload(){
 	layer.msg(exportStr.importSuccess);
+}
+
+function importFailed(message) {
+	layer.alert(exportStr.importFailed + ": " + (message || ""));
 }
 
 function lExport() {

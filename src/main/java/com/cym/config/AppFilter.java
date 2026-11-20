@@ -2,6 +2,8 @@ package com.cym.config;
 
 import java.io.File;
 import java.io.UnsupportedEncodingException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.security.SecureRandom;
 import java.util.ArrayList;
@@ -35,6 +37,7 @@ import com.cym.utils.BaseController;
 import com.cym.utils.JsonResult;
 import com.cym.utils.MessageUtils;
 import com.cym.utils.PropertiesUtils;
+import com.cym.utils.ProxyTrustUtil;
 
 import cn.hutool.core.codec.Base64;
 import cn.hutool.core.io.FileUtil;
@@ -107,7 +110,7 @@ public class AppFilter implements Filter {
 				return;
 			}
 
-			if (AppSecurityUtil.csrfEnabled() && isStateChanging(ctx) && !isCsrfExempt(path) && !hasValidCreditKey(ctx) && !hasValidCsrf(ctx)) {
+			if (AppSecurityUtil.csrfEnabled() && isStateChanging(ctx) && !isCsrfExempt(path, ctx) && !hasValidCsrf(ctx)) {
 				JsonResult result = new JsonResult();
 				result.setSuccess(false);
 				result.setStatus("403");
@@ -167,18 +170,21 @@ public class AppFilter implements Filter {
 				|| "DELETE".equalsIgnoreCase(method) || "PATCH".equalsIgnoreCase(method);
 	}
 
-	private boolean isCsrfExempt(String path) {
-		return path.contains("adminPage/login/login") //
+	private boolean isCsrfExempt(String path, Context ctx) {
+		if (path.contains("adminPage/login/login") //
 				|| path.contains("adminPage/login/autoLogin") //
 				|| path.contains("adminPage/login/getAuth") //
 				|| path.contains("adminPage/login/getCredit") //
-				|| path.contains("adminPage/login/addAdmin") //
-				|| path.contains("adminPage/sso/");
-	}
-
-	private boolean hasValidCreditKey(Context ctx) {
-		String creditKey = ctx.param("creditKey");
-		return StrUtil.isNotEmpty(creditKey) && creditService.check(creditKey);
+				|| path.contains("adminPage/sso/")) {
+			return true;
+		}
+		// Initial administrator creation is only allowed while the system has
+		// no administrator at all. Once one exists the route is rejected by
+		// LoginController.addAdmin, so keep the CSRF exemption in sync.
+		if (path.contains("adminPage/login/addAdmin")) {
+			return adminService.count() == 0;
+		}
+		return false;
 	}
 
 	private boolean hasValidCsrf(Context ctx) {
@@ -390,13 +396,29 @@ public class AppFilter implements Filter {
 	}
 
 	private String buildUrl(String ctxStr, Context ctx, Remote remote) {
-		String url = ctx.url().replace(ctxStr, "//" + remote.getIp() + ":" + remote.getPort() + "/");
-
-		if (url.startsWith("http")) {
-			url = url.replace("http:", "").replace("https:", "");
-
+		String url = ctx.url();
+		String query = "";
+		int queryStart = url.indexOf('?');
+		if (queryStart >= 0) {
+			query = url.substring(queryStart);
+			url = url.substring(0, queryStart);
 		}
-		url = remote.getProtocol() + ":" + url;
+
+		try {
+			// Parse/rebuild instead of replacing ctxStr inside the raw URL:
+			// a Host header that differs from the URL authority can no longer
+			// inject an arbitrary scheme, host, port or path into the proxy URL.
+			URI uri = new URI(url);
+			String path = uri.getRawPath();
+			if (StrUtil.isEmpty(path)) {
+				path = "/";
+			}
+			String targetPath = path.replace(ctxStr, "/");
+			url = remote.getProtocol() + "://" + remote.getIp() + ":" + remote.getPort() + targetPath + query;
+		} catch (URISyntaxException e) {
+			logger.error("Invalid request URL, refusing to build remote URL: " + url, e);
+			url = remote.getProtocol() + "://" + remote.getIp() + ":" + remote.getPort() + "/" + query;
+		}
 
 		Admin admin = (Admin) ctx.session("admin");
 		String showAdmin = "false";
@@ -410,27 +432,13 @@ public class AppFilter implements Filter {
 	}
 
 	public String getCtxStr(Context context) {
-		String httpHost = context.header("X-Forwarded-Host");
-		String realPort = context.header("X-Forwarded-Port");
-		String host = context.header("Host");
-
-		String ctx = "//";
-		if (StrUtil.isNotEmpty(httpHost)) {
-			ctx += httpHost;
-		} else if (StrUtil.isNotEmpty(host)) {
-			ctx += host;
-			if (!host.contains(":") && StrUtil.isNotEmpty(realPort)) {
-				ctx += ":" + realPort;
-			}
-		} else {
-			host = context.url().split("/")[2];
-			ctx += host;
-			if (!host.contains(":") && StrUtil.isNotEmpty(realPort)) {
-				ctx += ":" + realPort;
-			}
+		String authority = ProxyTrustUtil.resolveTrustedAuthority(context);
+		if (StrUtil.isEmpty(authority)) {
+			// Malicious / untrusted Host: do not emit a cross-origin context
+			// path. Formatters can still render, but links stay host-relative.
+			return "";
 		}
-		return ctx;
-
+		return "//" + authority;
 	}
 
 }

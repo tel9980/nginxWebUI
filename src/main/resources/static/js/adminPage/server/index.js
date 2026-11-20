@@ -244,8 +244,12 @@ function showWindow(title) {
 }
 
 function addOver() {
-	if ($("#listen").val().trim() == '') {
-		layer.msg(serverStr.noPort);
+	var listen = $("#listen").val() == null ? '' : $("#listen").val().trim();
+	// nginx listen directive: optional address followed by a 1-65535 port and
+	// optional parameters such as "ssl". Validate the port before saving.
+	var listenMatch = listen.match(/^(?:[^:\s]+:)?(\d+)(?:\s+.*)?$/);
+	if (listen == '' || !listenMatch || parseInt(listenMatch[1], 10) < 1 || parseInt(listenMatch[1], 10) > 65535 || /^0\d/.test(listenMatch[1])) {
+		layer.msg(serverStr.invalidPort);
 		return;
 	}
 
@@ -287,13 +291,13 @@ function addOver() {
 	server.id = $("#id").val();
 	server.proxyType = $("#proxyType").val();
 	server.proxyUpstreamId = $("#proxyUpstreamId").val();
-	server.listen = $("#listen").val();
+	server.listen = $("#listen").val().trim();
 	if ($("#ip").val() != '') {
 		var ip = $("#ip").val();
 		if (ip.indexOf(":") > -1) {
 			ip = `[${ip}]`;
 		}
-		server.listen = ip + ":" + $("#listen").val();
+		server.listen = ip + ":" + $("#listen").val().trim();
 	}
 
 

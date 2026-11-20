@@ -43,6 +43,10 @@ public class AdminService {
 		return page;
 	}
 
+	public Long count() {
+		return sqlHelper.findAllCount(Admin.class);
+	}
+
 	public Long getCountByName(String name) {
 		return sqlHelper.findCountByQuery(new ConditionAndWrapper().eq(Admin::getName, name), Admin.class);
 	}

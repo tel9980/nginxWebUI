@@ -121,23 +121,48 @@ public class CertService {
 	}
 
 	public void writeAcmeZipBase64(String acmeZip) {
-		if (StrUtil.isNotEmpty(acmeZip)) {
-			Base64.decodeToFile(acmeZip, new File(homeConfig.home + "temp" + File.separator + "acme.zip"));
-			FileUtil.del(homeConfig.home + ".acme.sh/");
-			FileUtil.mkdir(homeConfig.home + ".acme.sh/");
-			ZipUtil.unzip(homeConfig.home + "temp" + File.separator + "acme.zip", homeConfig.home + ".acme.sh/");
-			FileUtil.del(homeConfig.home + "temp" + File.separator + "acme.zip");
-		}
+		replaceFromZipBase64(acmeZip, homeConfig.home + ".acme.sh", "acme.zip");
 	}
 	
 
 	public void writeCertZipBase64(String certZip) {
-		if (StrUtil.isNotEmpty(certZip)) {
-			Base64.decodeToFile(certZip, new File(homeConfig.home + "temp" + File.separator + "cert.zip"));
-			FileUtil.del(homeConfig.home + "cert/");
-			FileUtil.mkdir(homeConfig.home + "cert/");
-			ZipUtil.unzip(homeConfig.home + "temp" + File.separator + "cert.zip", homeConfig.home + "cert/");
-			FileUtil.del(homeConfig.home + "temp" + File.separator + "cert.zip");
+		replaceFromZipBase64(certZip, homeConfig.home + "cert", "cert.zip");
+	}
+
+	private void replaceFromZipBase64(String zipBase64, String targetPath, String tempZipName) {
+		if (StrUtil.isEmpty(zipBase64)) {
+			return;
+		}
+		File tempZip = new File(homeConfig.home + "temp" + File.separator + tempZipName);
+		File tempDir = new File(homeConfig.home + "cert-import-" + System.nanoTime());
+		File backupDir = new File(targetPath + ".bak-" + System.nanoTime());
+		File target = new File(targetPath);
+		FileUtil.mkdir(tempZip.getParentFile());
+		try {
+			Base64.decodeToFile(zipBase64, tempZip);
+			FileUtil.mkdir(tempDir);
+			ZipUtil.unzip(tempZip, tempDir);
+
+			if (target.exists()) {
+				FileUtil.rename(target, backupDir.getName(), true);
+			}
+			try {
+				FileUtil.rename(tempDir, target.getName(), true);
+			} catch (RuntimeException e) {
+				if (backupDir.exists()) {
+					FileUtil.rename(backupDir, target.getName(), true);
+				}
+				throw e;
+			}
+			tempDir = null;
+		} catch (Exception e) {
+			logger.error("Failed to import certificate archive into {}", targetPath, e);
+			throw new RuntimeException("证书压缩包导入失败: " + e.getMessage(), e);
+		} finally {
+			FileUtil.del(tempZip);
+			if (tempDir != null) {
+				FileUtil.del(tempDir);
+			}
 		}
 	}
 

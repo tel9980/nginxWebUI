@@ -189,9 +189,7 @@ function showUpdate(version, url, docker, update) {
 		<div>${baseStr.jar}: <span class='green'>${url}</span></div>
 		<div>${baseStr.docker}: <span class='green'>${docker}</span></div>
 		<div>&nbsp;</div>
-		<div>
-			<button type="button" class="layui-btn layui-btn-sm" onclick="autoUpdate('${url}')">${baseStr.click}</button>
-		</div>
+		<div style="font-weight: bolder;">${baseStr.upgradeImageTip || '请升级镜像'}</div>
 	`;
 
 	layer.open({
@@ -220,40 +218,6 @@ function form2JsonString(formId) {
 }
 
 var loaded;
-function autoUpdate(url) {
-	if (confirm(baseStr.confirmUpdate)) {
-		loaded = layer.load();
-		$.ajax({
-			type: 'POST',
-			url: ctx + '/adminPage/main/autoUpdate',
-			data: {
-				url: url
-			},
-			dataType: 'json',
-			success: function(data) {
-				if (!data.success) {
-					layer.close(loaded);
-					layer.alert(data.msg);
-					return;
-				}
-
-				setTimeout(function() {
-					layer.close(loaded);
-					layer.alert(baseStr.updateOver);
-				}, 10000)
-
-
-			},
-			error: function() {
-				setTimeout(function() {
-					layer.close(loaded);
-					layer.alert(baseStr.updateOver);
-				}, 10000)
-			}
-		});
-	}
-
-}
 
 
 

@@ -69,6 +69,23 @@ The image defaults to the optimized flags. Bare-metal users can omit the new fla
 
 nginxWebUI can generate nginx config and execute privileged nginx/acme operations. Treat it as a high-privilege admin tool: keep it off the public Internet, use a reverse proxy with authentication/TLS, and back up the persisted data directory.
 
+## Round 4 hardening — data safety, CSRF tightening, supply chain
+
+- **Import safety**: `setAsycPack` now snapshots writable config/cert files before import, confines all imported file paths to the project home via `PathSafetyUtil`, rolls back on failure, and surfaces errors instead of swallowing them.
+- **Safe export**: backups now default to secret-free (`includeSecrets=false`): TLS private keys, password files, ACME/cert archives and DNS/API credentials are omitted with restore notes; old behavior is available with `?includeSecrets=true`.
+- **Certificate imports** are atomic: extract to a temp dir, validate, then rename-swap the old directory to `.bak-<ts>`; failures keep the previous certificates intact.
+- **Proxy trust / SSRF**: `buildUrl` now uses URI parsing and ignores `X-Forwarded-Host/Port` unless `project.trustedProxyHeader=true` and the value matches `project.allowedHosts`.
+- **CSRF tightened**: creditKey no longer bypasses CSRF checks, and initial-admin creation is exempt only while no admins exist.
+- **Removed in-app self-update routes** entirely; upgrades are image-only.
+- **SQLite backups**: a daily task writes `backup/sqlite-*.db` via `VACUUM INTO` (with a copy fallback) and keeps the newest N copies (`project.sqliteBackupEnabled/Keep`).
+- **Port validation**: listen directives are validated as 1–65535 on both frontend and backend.
+- **Supply chain**: both image workflows now run an Anchore vulnerability scan (observation mode) and publish a SPDX SBOM artifact. ddns-go additionally gets a weekly upstream-sync check workflow and Chinese rebasing guide.
+
+### New config flags (Round 4)
+- `project.trustedProxyHeader: false`, `project.allowedHosts:` (empty by default).
+- `project.sqliteBackupEnabled: true`, `project.sqliteBackupKeep: 7`.
+- ddns-go: `DDNS_TRUST_PROXY=true` only when running behind a trusted local reverse proxy.
+
 ## Round 3 hardening — credentials, offline-by-default, ddns-go auth
 
 ### nginxWebUI

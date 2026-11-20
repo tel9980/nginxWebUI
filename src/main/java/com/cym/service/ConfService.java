@@ -1,6 +1,7 @@
 package com.cym.service;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -40,6 +41,7 @@ import com.cym.sqlhelper.bean.Sort;
 import com.cym.sqlhelper.bean.Sort.Direction;
 import com.cym.sqlhelper.utils.ConditionAndWrapper;
 import com.cym.sqlhelper.utils.SqlHelper;
+import com.cym.utils.PathSafetyUtil;
 import com.cym.utils.SystemTool;
 import com.cym.utils.ToolUtils;
 import com.github.odiszapc.nginxparser.NgxBlock;
@@ -1141,6 +1143,9 @@ public class ConfService {
 	}
 
 	public void setAsycPack(AsycPack asycPack) {
+		String backupDir = createImportBackup();
+		boolean importFailed = false;
+		int writeFailures = 0;
 		try {
 
 			if (asycPack.getBasicList() != null) {
@@ -1160,18 +1165,8 @@ public class ConfService {
 				sqlHelper.insertAll(asycPack.getLocationList());
 
 				for (Server server : asycPack.getServerList()) {
-					try {
-						if (StrUtil.isNotEmpty(server.getPem()) && StrUtil.isNotEmpty(server.getPemStr())) {
-							String pemPath = SystemTool.isWindows() ? server.getPem().replace("*", "_") : server.getPem();
-							FileUtil.writeString(server.getPemStr(), pemPath, StandardCharsets.UTF_8);
-						}
-						if (StrUtil.isNotEmpty(server.getKey()) && StrUtil.isNotEmpty(server.getKeyStr())) {
-							String keyPath = SystemTool.isWindows() ? server.getKey().replace("*", "_") : server.getKey();
-							FileUtil.writeString(server.getKeyStr(), keyPath, StandardCharsets.UTF_8);
-						}
-					} catch (Exception e) {
-						e.printStackTrace();
-					}
+					writeFailures += writeImportedFile(server.getPem(), server.getPemStr(), backupDir, "server.pem");
+					writeFailures += writeImportedFile(server.getKey(), server.getKeyStr(), backupDir, "server.key");
 				}
 			}
 
@@ -1204,9 +1199,7 @@ public class ConfService {
 				sqlHelper.insertAll(asycPack.getPasswordList());
 
 				for (Password password : asycPack.getPasswordList()) {
-					if (StrUtil.isNotEmpty(password.getPath()) && StrUtil.isNotEmpty(password.getPathStr())) {
-						FileUtil.writeString(password.getPathStr(), password.getPath(), StandardCharsets.UTF_8);
-					}
+					writeFailures += writeImportedFile(password.getPath(), password.getPathStr(), backupDir, "password");
 				}
 			}
 
@@ -1225,11 +1218,128 @@ public class ConfService {
 			if (asycPack.getCertZip() != null) {
 				certService.writeCertZipBase64(asycPack.getCertZip());
 			}
+			if (writeFailures > 0) {
+				throw new IOException(writeFailures + " file(s) rejected or unwritable");
+			}
 
 		} catch (Exception e) {
-			logger.error(e.getMessage(), e);
+			importFailed = true;
+			logger.error("Import failed; restoring files from {}", backupDir, e);
+			throw new RuntimeException("配置导入失败，已回滚文件快照: " + e.getMessage(), e);
+		} finally {
+			if (importFailed) {
+				restoreImportBackup(backupDir);
+			}
 		}
 
+	}
+
+	private String createImportBackup() {
+		String timestamp = DateUtil.format(new Date(), "yyyyMMdd_HHmmss_SSS");
+		File backup = new File(homeConfig.home + ".import-backup-" + timestamp);
+		FileUtil.mkdir(backup);
+
+		copyToBackup(new File(homeConfig.home + "nginx.conf"), backup);
+		copyToBackup(new File(homeConfig.home + "conf.d"), backup);
+		copyToBackup(new File(homeConfig.home + ".acme.sh"), backup);
+		copyToBackup(new File(homeConfig.home + "cert"), backup);
+		return backup.getAbsolutePath();
+	}
+
+	private void copyToBackup(File source, File backup) {
+		if (!source.exists()) {
+			return;
+		}
+		File target = new File(backup, source.getName());
+		try {
+			if (source.isDirectory()) {
+				FileUtil.copy(source, target, true);
+			} else {
+				Files.copy(source.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
+			}
+		} catch (IOException e) {
+			logger.error("Failed to back up {} to {}", source, target, e);
+		}
+	}
+
+	private void restoreImportBackup(String backupDir) {
+		File backup = new File(backupDir);
+		if (!backup.isDirectory()) {
+			return;
+		}
+		for (String name : new String[] { "nginx.conf", "conf.d", ".acme.sh", "cert" }) {
+			File source = new File(backup, name);
+			File target = new File(homeConfig.home + name);
+			if (!source.exists()) {
+				continue;
+			}
+			try {
+				FileUtil.del(target);
+				FileUtil.copy(source, target, true);
+				logger.info("Restored {} from import backup", target);
+			} catch (Exception e) {
+				logger.error("Failed to restore {} from import backup", target, e);
+			}
+		}
+	}
+
+	private int writeImportedFile(String importedPath, String content, String backupDir, String backupName) {
+		if (StrUtil.isEmpty(importedPath)) {
+			return 0;
+		}
+		File target;
+		try {
+			target = resolveImportPath(importedPath);
+		} catch (IOException e) {
+			logger.error("Skipping unsafe import path: {}", importedPath, e);
+			return 1;
+		}
+		try {
+			backupImportedFile(target, backupDir, backupName);
+			FileUtil.writeString(content, target, StandardCharsets.UTF_8);
+			return 0;
+		} catch (IOException e) {
+			logger.error("Skipping unwritable import path: {}", importedPath, e);
+			return 1;
+		}
+	}
+
+	private File resolveImportPath(String importedPath) throws IOException {
+		Path root = new File(homeConfig.home).getAbsoluteFile().toPath().normalize();
+		String normalizedInput = normalizeImportPath(importedPath);
+		PathSafetyUtil pathSafety = new PathSafetyUtil();
+		pathSafety.setRoot(root.toString());
+		try {
+			File resolved = pathSafety.resolve(normalizedInput).getCanonicalFile();
+			if (!resolved.toPath().normalize().startsWith(root)) {
+				throw new IOException("path outside home root: " + importedPath);
+			}
+			return resolved;
+		} catch (IOException e) {
+			throw new IOException("path outside home root: " + importedPath, e);
+		}
+	}
+
+	private String normalizeImportPath(String importedPath) {
+		String path = importedPath.trim();
+		if (SystemTool.isWindows()) {
+			path = path.replace('\\', '/');
+			if (path.length() >= 3 && Character.isLetter(path.charAt(0)) && path.charAt(1) == ':') {
+				path = path.substring(2);
+			}
+		}
+		return path;
+	}
+
+	private void backupImportedFile(File target, String backupDir, String backupName) throws IOException {
+		if (!target.exists()) {
+			return;
+		}
+		File targetPath = target.getCanonicalFile();
+		File backupRoot = new File(backupDir).getCanonicalFile();
+		if (!targetPath.toPath().startsWith(backupRoot.toPath())) {
+			Files.copy(targetPath.toPath(), new File(backupDir, backupName).toPath(), StandardCopyOption.REPLACE_EXISTING);
+		}
 	}
 
 	public List<Cert> getApplyCerts() {

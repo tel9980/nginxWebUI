@@ -5,6 +5,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.noear.solon.annotation.Controller;
 import org.noear.solon.annotation.Inject;
@@ -173,6 +175,9 @@ public class ServerController extends BaseController {
 	@Mapping("addOver")
 	public JsonResult addOver(String serverJson, String serverParamJson, String locationJson) {
 		Server server = JSONUtil.toBean(serverJson, Server.class);
+		if (!isValidListen(server.getListen())) {
+			return renderError(m.get("serverStr.invalidPort"));
+		}
 		List<Location> locations = JSONUtil.toList(JSONUtil.parseArray(locationJson), Location.class);
 
 		if (StrUtil.isEmpty(server.getId())) {
@@ -234,6 +239,34 @@ public class ServerController extends BaseController {
 			logger.error(e.getMessage(), e);
 			return renderError(m.get("serverStr.importFail"));
 		}
+	}
+
+	private static final Pattern LISTEN_PORT_PATTERN = Pattern.compile("^(?:[^:\\s]+:)?(\\d+)(?:\\s+.*)?$");
+
+	/** Extracts the first port of an nginx listen directive (1-65535), or null. */
+	private static Integer parseListenPort(String listen) {
+		if (StrUtil.isEmpty(listen)) {
+			return null;
+		}
+		Matcher matcher = LISTEN_PORT_PATTERN.matcher(listen.trim());
+		if (!matcher.matches()) {
+			return null;
+		}
+		String portText = matcher.group(1);
+		if (portText.length() > 1 && portText.startsWith("0")) {
+			return null;
+		}
+		try {
+			int port = Integer.parseInt(portText);
+			return port >= 1 && port <= 65535 ? port : null;
+		} catch (NumberFormatException e) {
+			return null;
+		}
+	}
+
+	/** Validates the first port of an nginx listen directive (1-65535). */
+	public static boolean isValidListen(String listen) {
+		return parseListenPort(listen) != null;
 	}
 
 	@Mapping("testPort")
