@@ -40,7 +40,7 @@ jobs:
 
       - name: Extract metadata
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
@@ -51,7 +51,7 @@ jobs:
 
       - name: Build and push
         id: build
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ./Dockerfile
@@ -64,12 +64,8 @@ jobs:
         run: |
           echo "Pushed: ${{ steps.meta.outputs.tags }}"
 
-      # NOTE: docker/metadata-action@v5 and docker/build-push-action@v6 are the
-      # latest released majors; GitHub's Node 20 deprecation notice is non-blocking
-      # and they are forced onto Node 24 by the runner. Do not bump blindly.
-
       - name: Scan image for vulnerabilities
-        uses: anchore/scan-action@v6
+        uses: anchore/scan-action@v7
         with:
           image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:optimized
           fail-build: false
