@@ -16,23 +16,6 @@
 #### 介绍
 nginx网页配置工具
 
-QQ技术交流群1: 1106758598(已满)
-
-QQ技术交流群2: 560797506
-
-邮箱: cym1102@qq.com
-
-官网地址: [https://www.nginxwebui.cn](https://www.nginxwebui.cn)
-
-Gitee: [https://gitee.com/cym1102/nginxWebUI](https://gitee.com/cym1102/nginxWebUI)
-
-Github: [https://github.com/cym1102/nginxWebUI](https://github.com/cym1102/nginxWebUI)
-
-视频教程: [https://www.bilibili.com/video/BV18A4y1D7GZ](https://www.bilibili.com/video/BV18A4y1D7GZ)
-
-微信捐赠二维码
-
-<img src="README/weixin.png"  height="200" width="200">
 
 #### 功能说明
 

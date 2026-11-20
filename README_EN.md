@@ -14,23 +14,6 @@
 #### Introduce
 Nginx web page configuration tool
 
-QQ Group1: 1106758598
-
-QQ Group2: 560797506
-
-Email: cym1102@qq.com
-
-Official website: [http://www.nginxwebui.cn](http://www.nginxwebui.cn)
-
-Gitee: [https://gitee.com/cym1102/nginxWebUI](https://gitee.com/cym1102/nginxWebUI)
-
-Github: [https://github.com/cym1102/nginxWebUI](https://github.com/cym1102/nginxWebUI)
-
-Video tutorial: [https://www.bilibili.com/video/BV18A4y1D7GZ](https://www.bilibili.com/video/BV18A4y1D7GZ)
-
-WeChat Donate: 
-
-<img src="README/weixin.png"  height="200" width="200">
 
 #### Function description
 

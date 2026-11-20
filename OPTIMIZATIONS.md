@@ -99,6 +99,12 @@ nginxWebUI can generate nginx config and execute privileged nginx/acme operation
 - Removed the only remaining "professional edition" traces: the red upgrade link in the admin header, the `commonStr.pro` i18n key in all three locale files, and the pro-vs-open-source comparison sections and links from both `README.md` and `README_EN.md`.
 - This fork has always been the pure open-source codebase; the commercial edition is a separate upstream product whose code is not present here. No features were changed.
 
+## Round 7 — remove upstream contact/donation blocks
+
+- Removed upstream QQ groups, e-mail, official-site/Gitee/GitHub/video links and the WeChat donation QR from both `README.md` and `README_EN.md` (the functional Gitee jar download links in the install section are kept).
+- Replaced the admin "About" page content with short fork information (repo, GHCR image, change-log pointer) and removed the `aboutStr.author/donation/email/qqGroup/gitee/github` i18n keys from all three locale files.
+- The upstream original documentation below the fork banner is otherwise unchanged.
+
 ## Round 3 hardening — credentials, offline-by-default, ddns-go auth
 
 ### nginxWebUI
