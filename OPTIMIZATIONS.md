@@ -94,6 +94,11 @@ nginxWebUI can generate nginx config and execute privileged nginx/acme operation
 - `project.sqliteBackupEnabled: true`, `project.sqliteBackupKeep: 7`.
 - ddns-go: `DDNS_TRUST_PROXY=true` only when running behind a trusted local reverse proxy.
 
+## Round 6 — pure open-source edition
+
+- Removed the only remaining "professional edition" traces: the red upgrade link in the admin header, the `commonStr.pro` i18n key in all three locale files, and the pro-vs-open-source comparison sections and links from both `README.md` and `README_EN.md`.
+- This fork has always been the pure open-source codebase; the commercial edition is a separate upstream product whose code is not present here. No features were changed.
+
 ## Round 3 hardening — credentials, offline-by-default, ddns-go auth
 
 ### nginxWebUI

@@ -24,8 +24,6 @@ QQ技术交流群2: 560797506
 
 官网地址: [https://www.nginxwebui.cn](https://www.nginxwebui.cn)
 
-专业版地址: [https://pro.nginxwebui.cn](https://pro.nginxwebui.cn)
-
 Gitee: [https://gitee.com/cym1102/nginxWebUI](https://gitee.com/cym1102/nginxWebUI)
 
 Github: [https://github.com/cym1102/nginxWebUI](https://github.com/cym1102/nginxWebUI)
@@ -53,35 +51,6 @@ nginx本身功能复杂, nginxWebUI并不能涵盖nginx所有功能, 但能覆�
 本系统通过Let's encrypt申请证书, 使用acme.sh脚本进行自动化申请和续签, 开启续签的证书将在每天凌晨2点进行续签, 只有超过60天的证书才会进行续签. 只支持在linux下签发证书.
 
 添加tcp/ip转发配置支持时, 一些低版本的nginx可能需要重新编译，通过添加–with-stream参数指定安装stream模块才能使用, 但在ubuntu 18.04下, 官方软件库中的nginx已经带有stream模块, 不需要重新编译. 本系统如果配置了tcp转发项的话, 会自动引入ngx_stream_module.so的配置项, 如果没有开启则不引入, 最大限度优化ngnix配置文件. 
-
-
-#### 专业版与开源版区别
-
-专业版地址: [https://pro.nginxwebui.cn](https://pro.nginxwebui.cn)
-
-| 功能         | 专业版        | 开源版        |
-| ----------- | ----------- | ----------- |
-| 基本参数配置       | √  | √ |
-| http参数配置      | √  | √ |
-| 反向代理配置       | √  | √ |
-| Stream参数配置    | √  | √ |
-| 负载均衡配置       | √  | √ |
-| 参数模板          | √  | √ |
-| 静态网页上传       | √  | √ |
-| 密码文件管理       | √  | √ |
-| 黑白名单IP        | √  | √ |
-| 证书申请          | √  | √ |
-| API接口文档       | √  | √ |
-| 远程管理          | √  | √ |
-| 节点及分组统一管理   | √  | × |
-| 节点配置文件统一同步 | √  | × |
-| 节点信息数据采集    | √  | × |
-| 节点状态统计       | √  | × |
-| 缓存配置         | √  | × |
-| nginx日志采集    | √  | × |
-| nginx日志查看    | √  | × |
-| nginx日志统计    | √  | × |
-| nginx流量统计    | √  | × |
 
 
 #### jar安装说明

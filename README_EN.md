@@ -22,8 +22,6 @@ Email: cym1102@qq.com
 
 Official website: [http://www.nginxwebui.cn](http://www.nginxwebui.cn)
 
-Professional edition address: [https://pro.nginxwebui.cn](https://pro.nginxwebui.cn)
-
 Gitee: [https://gitee.com/cym1102/nginxWebUI](https://gitee.com/cym1102/nginxWebUI)
 
 Github: [https://github.com/cym1102/nginxWebUI](https://github.com/cym1102/nginxWebUI)
@@ -43,35 +41,6 @@ The nginx webui allows you to manage multiple Nginx server clusters. You can swi
 The nginx web user interface (webui) does not cover all nginx functions, but covers 90% of the daily nginx configuration. If nginx configuration items are not covered by the platform, you can use custom parameter templates to generate unique configuration parameters in the CONF file.  
  
 After the deployment of this project, the configuration of nginx no longer need to search the web configuration code, no longer need to manually apply for and configure SSL certificates, just need to add, delete, change and check in this project can easily configure and start nginx.  
-
-
-#### Professional edition and open source edition difference
-
-Professional edition address: [https://pro.nginxwebui.cn](https://pro.nginxwebui.cn)
-
-| function         | Professional edition        | Open source edition        |
-| ----------- | ----------- | ----------- |
-| Basic parameter configuration       | √  | √ |
-| http Parameter configuration      | √  | √ |
-| Reverse proxy configuration       | √  | √ |
-| Stream parameter configuration    | √  | √ |
-| Load balancing configuration       | √  | √ |
-| Parameterized template          | √  | √ |
-| Static web upload       | √  | √ |
-| Password file management       | √  | √ |
-| Whitelist IP        | √  | √ |
-| Certificate application          | √  | √ |
-| API interface documentation       | √  | √ |
-| Remote management          | √  | √ |
-| Manage nodes and groups   | √  | × |
-| Node configuration files synchronize | √  | × |
-| Node data collection    | √  | × |
-| Node status statistics       | √  | × |
-| Cache configuration         | √  | × |
-| nginx log collection    | √  | × |
-| nginx log view    | √  | × |
-| nginx log statistics    | √  | × |
-| nginx traffic statistics    | √  | × |
 
 
 #### Technical note
