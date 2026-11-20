@@ -1,5 +1,16 @@
 # nginxWebUI
 
+> ## 🛠️ tel9980 optimized image (this fork)
+>
+> This repository is a personal optimization fork of [cym1102/nginxWebUI](https://github.com/cym1102/nginxWebUI) for **Dockge / Docker personal deployments**. Upstream features are unchanged.
+>
+> - **Image**: `ghcr.io/tel9980/nginxwebui:optimized` (also `:4.4.2-optimized` and `:sha-<commit>`, amd64 + arm64). Public pull, no login required.
+> - **Hardening**: safe container startup (no `kill -9` collateral, logs to stdout), slim nginx modules, Java 17, HEALTHCHECK, CSRF + token rate limiting, sensitive-setting guards, atomic config publishing with backups, import/export path allowlist, secret-free export by default, in-app self-update disabled (upgrade by replacing the image), and ongoing dependency vulnerability scanning.
+> - **Dockge**: use `dockge-compose.yaml` at the repo root; it binds only `127.0.0.1:8080` and persists data to `./data`. When co-deploying `ddns-go`, the reverse-proxy target is `http://host.docker.internal:9876` (see `OPTIMIZATIONS.md` and `reverse-proxy-ddns-go.conf.example`).
+> - **Common flags** (via compose `BOOT_OPTIONS` or `app.yml`): `project.filesystemRoot=/home/nginxWebUI/`, `project.trustedProxyHeader=true` plus `project.allowedHosts` (only behind a trusted reverse proxy), `project.apiTokenTtlMinutes`, `project.creditKeyEnabled/creditKeyTtlMinutes`, `project.sqliteBackupEnabled/Keep`.
+> - **Security note**: this tool executes privileged nginx/acme operations. Use a strong password, keep it off the public Internet, put HTTPS/auth in front, and back up `./data` regularly.
+> - Full change log and build instructions: [OPTIMIZATIONS.md](OPTIMIZATIONS.md). Original upstream documentation follows below.
+
 #### Introduce
 Nginx web page configuration tool
 

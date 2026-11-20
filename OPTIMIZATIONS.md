@@ -69,6 +69,13 @@ The image defaults to the optimized flags. Bare-metal users can omit the new fla
 
 nginxWebUI can generate nginx config and execute privileged nginx/acme operations. Treat it as a high-privilege admin tool: keep it off the public Internet, use a reverse proxy with authentication/TLS, and back up the persisted data directory.
 
+## Round 5 — dependency vulnerability fixes and README refresh
+
+- **Java dependencies**: pinned patched transitive versions directly in `pom.xml` while keeping Solon `3.3.3` (a major upgrade would risk breaking this older codebase): `undertow-core` and `undertow-servlet` `2.2.37.Final → 2.2.39.Final` (fixes `GHSA-j382-5jj3-vw4j` / `GHSA-6h4f-pj3g-q8fq`), and `plexus-utils` `2.0.4 → 3.5.1` (fixes `GHSA-8vhq-qq4p-grq3` / `GHSA-g6ph-x5wf-g337`). Verified inside the fat jar via each artifact's `pom.properties`.
+- **Base images**: both Dockerfiles now run `apk upgrade --no-cache` after package install so nginx/curl/zlib/OpenSSL packages pick up the latest security patches available in their Alpine repositories.
+- **README**: `README.md` / `README_EN.md` in both repositories now lead with a short section describing the optimized fork, GHCR tags, Dockge usage, key safety switches, and upstream links.
+- Remaining from the image scan: low-EPSS `High` advisories in Alpine packages (patched by `apk upgrade`), and `httpclient 4.5.12 → 4.5.13` (medium, from Solon's HTTP stack). No `Critical` findings are expected after this round; the scan remains in observation mode.
+
 ## Round 4 hardening — data safety, CSRF tightening, supply chain
 
 - **Import safety**: `setAsycPack` now snapshots writable config/cert files before import, confines all imported file paths to the project home via `PathSafetyUtil`, rolls back on failure, and surfaces errors instead of swallowing them.

@@ -22,6 +22,7 @@ RUN apk add --no-cache \
       ttf-dejavu \
       tini \
       su-exec \
+    && apk upgrade --no-cache \
     && fc-cache -f \
     && ln -snf /usr/share/zoneinfo/${TZ} /etc/localtime \
     && echo "${TZ}" > /etc/timezone \

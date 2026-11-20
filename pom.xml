@@ -18,9 +18,31 @@
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<java.version>17</java.version>
 		<maven.compiler.release>17</maven.compiler.release>
+		<!-- Security overrides: Solon 3.3.3 pins older transitive versions.
+		     Undertow 2.2.39 fixes GHSA-j382-5jj3-vw4j / GHSA-6h4f-pj3g-q8fq;
+		     plexus-utils 3.5.1 fixes GHSA-8vhq-qq4p-grq3 / GHSA-g6ph-x5wf-g337. -->
+		<undertow.version>2.2.39.Final</undertow.version>
+		<plexus-utils.version>3.5.1</plexus-utils.version>
 	</properties>
 
 	<dependencies>
+		<!-- Force patched transitive versions flagged by the image vulnerability scan. -->
+		<dependency>
+			<groupId>org.codehaus.plexus</groupId>
+			<artifactId>plexus-utils</artifactId>
+			<version>${plexus-utils.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.undertow</groupId>
+			<artifactId>undertow-core</artifactId>
+			<version>${undertow.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.undertow</groupId>
+			<artifactId>undertow-servlet</artifactId>
+			<version>${undertow.version}</version>
+		</dependency>
+
 		<dependency>
 			<groupId>org.noear</groupId>
 			<artifactId>solon-web</artifactId>

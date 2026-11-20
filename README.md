@@ -2,6 +2,17 @@
 
 ### [README.md English version](README_EN.md)
 
+> ## 🛠️ tel9980 优化镜像（本文档所在 fork）
+>
+> 本仓库是 [cym1102/nginxWebUI](https://github.com/cym1102/nginxWebUI) 的个人优化 fork，面向 **Dockge / Docker 个人部署**，原版功能保持不变。
+>
+> - **镜像**：`ghcr.io/tel9980/nginxwebui:optimized`（也带 `:4.4.2-optimized` 和 `:sha-<commit>` 标签，amd64 + arm64）。**公开可拉取，无需登录**。
+> - **已做加固**：容器安全启动（不再 `kill -9` 误杀、日志输出到 stdout）、精简 nginx 模块、Java 17、HEALTHCHECK、CSRF 与 token 限流、敏感设置项保护、配置原子发布与自动备份、导入导出路径白名单、默认脱敏导出、自更新禁用（升级请换镜像），并持续跟进依赖漏洞扫描。
+> - **Dockge 一键部署**：直接用仓库根目录的 `dockge-compose.yaml`，默认只监听 `127.0.0.1:8080`，数据持久化到 `./data`。若同栈使用 `ddns-go`，反代目标填 `http://host.docker.internal:9876`（详见 `OPTIMIZATIONS.md` 与 `reverse-proxy-ddns-go.conf.example`）。
+> - **常用开关**（在 `compose` 的 `BOOT_OPTIONS` 或 `app.yml` 中）：`project.filesystemRoot=/home/nginxWebUI/`、`project.trustedProxyHeader=true` + `project.allowedHosts`（仅在可信反代后开启）、`project.apiTokenTtlMinutes`、`project.creditKeyEnabled/creditKeyTtlMinutes`、`project.sqliteBackupEnabled/Keep`。
+> - **安全提醒**：本程序会执行 root 级 nginx/acme 操作，请务必设置强密码、不要裸奔公网、用反代加 HTTPS/认证，并定期备份 `./data`。
+> - 完整改动与构建说明见 [OPTIMIZATIONS.md](OPTIMIZATIONS.md)。上游原始说明见下方。
+
 #### 介绍
 nginx网页配置工具
 
