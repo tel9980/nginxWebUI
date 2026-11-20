@@ -1,4 +1,4 @@
-FROM alpine:3.21
+FROM alpine:3.22
 
 LABEL org.opencontainers.image.title="nginxWebUI (optimized)" \
       org.opencontainers.image.description="Dockge-friendly nginxWebUI with safe startup, visible logs and slim nginx modules" \
